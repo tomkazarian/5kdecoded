@@ -369,27 +369,159 @@
             });
 
             try {
-                // Dynamically import PDFGenerator
-                const module = await import('./pdf-integration.js');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF();
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                let yPos = 20;
 
-                // Import the PDFGenerator class
-                const PDFGeneratorModule = await import('../pdf-export/PDFGenerator.js');
-                const PDFGenerator = PDFGeneratorModule.PDFGenerator || PDFGeneratorModule.default;
+                // Helper functions
+                const addText = (text, size = 12, bold = false, color = [0, 0, 0]) => {
+                    pdf.setFontSize(size);
+                    pdf.setFont('helvetica', bold ? 'bold' : 'normal');
+                    pdf.setTextColor(...color);
+                    pdf.text(text, 20, yPos);
+                    yPos += size * 0.5;
+                };
 
-                // Create generator instance
-                const generator = new PDFGenerator();
+                const addWrappedText = (text, maxWidth = 170) => {
+                    const lines = pdf.splitTextToSize(text, maxWidth);
+                    lines.forEach(line => {
+                        pdf.text(line, 20, yPos);
+                        yPos += 6;
+                    });
+                };
 
-                // Generate PDF
-                const pdf = await generator.generatePDF(globalAnalysisData);
+                const formatTime = (seconds) => {
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.round(seconds % 60);
+                    return `${mins}:${String(secs).padStart(2, '0')}`;
+                };
 
-                // Create filename with date
-                const date = new Date().toISOString().split('T')[0];
-                const filename = `Dynastride-5K-Analysis-${date}.pdf`;
+                const kmToMiles = (km) => (km * 0.621371).toFixed(2);
+
+                const formatPacePerMile = (pacePerKm) => {
+                    const pacePerMile = pacePerKm * 1.609344;
+                    const mins = Math.floor(pacePerMile);
+                    const secs = Math.round((pacePerMile % 1) * 60);
+                    return `${mins}:${String(secs).padStart(2, '0')}`;
+                };
+
+                // Title
+                addText('DYNASTRIDE 5K ANALYSIS REPORT', 20, true, [102, 126, 234]);
+                yPos += 10;
+
+                // Date
+                const date = new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                addText(`Generated: ${date}`, 10, false, [107, 114, 128]);
+                yPos += 10;
+
+                // Race Summary
+                addText('RACE SUMMARY', 16, true);
+                yPos += 5;
+
+                const { metrics, analysis } = globalAnalysisData;
+                addText(`Finish Time: ${formatTime(metrics.totalTime)}`, 12);
+                addText(`Distance: ${kmToMiles(metrics.totalDistance)} miles`, 12);
+                addText(`Average Pace: ${formatPacePerMile(metrics.avgPace)} /mile`, 12);
+                addText(`Average Heart Rate: ${Math.round(metrics.avgHeartRate)} bpm`, 12);
+                addText(`Cadence: ${Math.round(metrics.avgCadence)} spm`, 12);
+
+                if (analysis.vo2Max) {
+                    addText(`VO2 Max: ${analysis.vo2Max} ml/kg/min`, 12);
+                }
+
+                if (metrics.elevationGain !== undefined) {
+                    addText(`Elevation Gain: ${metrics.elevationGain}m`, 12);
+                }
+
+                yPos += 10;
+
+                // Race Commentary
+                if (analysis.raceCommentary && analysis.raceCommentary.length > 0) {
+                    addText('RACE ANALYSIS', 16, true);
+                    yPos += 5;
+
+                    analysis.raceCommentary.forEach(paragraph => {
+                        pdf.setFontSize(10);
+                        pdf.setFont('helvetica', 'normal');
+                        pdf.setTextColor(0, 0, 0);
+                        addWrappedText(paragraph);
+                        yPos += 3;
+                    });
+
+                    yPos += 10;
+                }
+
+                // Check if we need a new page
+                if (yPos > 250) {
+                    pdf.addPage();
+                    yPos = 20;
+                }
+
+                // Training Recommendations
+                if (analysis.trainingRecommendations) {
+                    addText('TRAINING RECOMMENDATIONS', 16, true);
+                    yPos += 5;
+
+                    const recs = analysis.trainingRecommendations;
+
+                    if (recs.weeklyGoal) {
+                        addText('12-Week Goal:', 14, true);
+                        addText(`Current Time: ${recs.weeklyGoal.currentTime}`, 12);
+                        addText(`Target Time: ${recs.weeklyGoal.goalTime}`, 12);
+                        addText(`Improvement: ${recs.weeklyGoal.improvement}`, 12);
+                        yPos += 5;
+                    }
+
+                    if (recs.trainingFocus && recs.trainingFocus.length > 0) {
+                        addText('Training Focus:', 14, true);
+                        recs.trainingFocus.forEach(focus => {
+                            pdf.setFontSize(11);
+                            pdf.text(`• ${focus}`, 25, yPos);
+                            yPos += 6;
+                        });
+                        yPos += 5;
+                    }
+
+                    if (recs.workoutPlan && recs.workoutPlan.length > 0) {
+                        // Check if we need a new page
+                        if (yPos > 200) {
+                            pdf.addPage();
+                            yPos = 20;
+                        }
+
+                        addText('Weekly Workout Plan:', 14, true);
+                        recs.workoutPlan.forEach(workout => {
+                            pdf.setFontSize(11);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text(`${workout.day}:`, 25, yPos);
+                            yPos += 5;
+
+                            pdf.setFont('helvetica', 'normal');
+                            pdf.text(`${workout.workout}`, 30, yPos);
+                            yPos += 5;
+                            pdf.setFontSize(9);
+                            pdf.setTextColor(100, 100, 100);
+                            pdf.text(`${workout.duration} • ${workout.intensity}`, 30, yPos);
+                            yPos += 5;
+                            pdf.setTextColor(0, 0, 0);
+                        });
+                    }
+                }
+
+                // Footer on last page
+                pdf.setFontSize(9);
+                pdf.setTextColor(107, 114, 128);
+                pdf.text('www.dynastride.com | USATF Level 1 Certified Coach', pageWidth / 2, 280, { align: 'center' });
 
                 // Download PDF
+                const filename = `Dynastride-5K-Analysis-${new Date().toISOString().split('T')[0]}.pdf`;
                 pdf.save(filename);
 
-                // Show success notification
                 showNotification('PDF report generated successfully!', 'success');
 
             } catch (error) {
