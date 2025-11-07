@@ -848,3 +848,61 @@ section h2 {
         font-size: 2.5rem;
     }
 }
+
+/* Chart Commentary */
+.chart-commentary {
+    margin-top: 20px;
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-left: 4px solid var(--primary-color);
+    border-radius: 4px;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: #555;
+}
+
+.chart-commentary p {
+    margin: 0;
+}
+
+/* Training Recommendations - Day Cards */
+.day-card {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    border-left: 3px solid var(--primary-color);
+}
+
+.day-card h4 {
+    margin: 0 0 10px 0;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.day-card .workout-name {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.day-card .workout-details {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+.day-card .workout-details span {
+    padding: 3px 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+
+.day-card .workout-purpose {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
