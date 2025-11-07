@@ -423,6 +423,11 @@
         renderSplitsChart(metrics);
         renderFormGauges(metrics);
 
+        // Render race commentary (if available)
+        if (analysis?.raceCommentary) {
+            renderRaceCommentary(analysis.raceCommentary);
+        }
+
         // Render insights and recommendations
         if (analysis?.insights) {
             renderInsights(analysis.insights);
