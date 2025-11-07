@@ -81,33 +81,74 @@ export class GpxFileParser {
     // Extract heart rate data if available (multiple namespace support)
     const heartRates = allTrackpoints
       .map(tp => {
-        // Try multiple extension formats
-        let hr = tp.extensions?.[0]?.['gpxtpx:TrackPointExtension']?.[0]?.['gpxtpx:hr']?.[0];
-        if (!hr) hr = tp.extensions?.[0]?.TrackPointExtension?.[0]?.hr?.[0];
-        if (!hr && tp.extensions?.[0]) {
-          // Try to find HR in any extension property
-          const ext = tp.extensions[0];
-          for (const key in ext) {
-            if (ext[key]?.[0]?.hr) hr = ext[key][0].hr[0];
-            if (ext[key]?.[0]?.['gpxtpx:hr']) hr = ext[key][0]['gpxtpx:hr'][0];
+        if (!tp.extensions?.[0]) return 0;
+
+        const ext = tp.extensions[0];
+        let hr = null;
+
+        // Try all common namespace variations
+        const namespaces = ['ns3:', 'gpxtpx:', 'garmin:', ''];
+        for (const ns of namespaces) {
+          // Try TrackPointExtension wrapper
+          const tpExt = ext[`${ns}TrackPointExtension`];
+          if (tpExt?.[0]) {
+            hr = tpExt[0][`${ns}hr`]?.[0] || tpExt[0]['hr']?.[0];
+            if (hr) break;
           }
         }
+
+        // If still not found, search all extension keys
+        if (!hr) {
+          for (const key in ext) {
+            if (key.includes('TrackPointExtension') && ext[key]?.[0]) {
+              const tpData = ext[key][0];
+              for (const dataKey in tpData) {
+                if (dataKey.includes('hr')) {
+                  hr = tpData[dataKey]?.[0];
+                  if (hr) break;
+                }
+              }
+            }
+          }
+        }
+
         return hr ? parseInt(hr) : 0;
       })
       .filter(hr => hr > 0 && hr < 250); // Filter valid HR range
 
     const cadences = allTrackpoints
       .map(tp => {
-        // Try multiple extension formats
-        let cad = tp.extensions?.[0]?.['gpxtpx:TrackPointExtension']?.[0]?.['gpxtpx:cad']?.[0];
-        if (!cad) cad = tp.extensions?.[0]?.TrackPointExtension?.[0]?.cad?.[0];
-        if (!cad && tp.extensions?.[0]) {
-          const ext = tp.extensions[0];
-          for (const key in ext) {
-            if (ext[key]?.[0]?.cad) cad = ext[key][0].cad[0];
-            if (ext[key]?.[0]?.['gpxtpx:cad']) cad = ext[key][0]['gpxtpx:cad'][0];
+        if (!tp.extensions?.[0]) return 0;
+
+        const ext = tp.extensions[0];
+        let cad = null;
+
+        // Try all common namespace variations
+        const namespaces = ['ns3:', 'gpxtpx:', 'garmin:', ''];
+        for (const ns of namespaces) {
+          // Try TrackPointExtension wrapper
+          const tpExt = ext[`${ns}TrackPointExtension`];
+          if (tpExt?.[0]) {
+            cad = tpExt[0][`${ns}cad`]?.[0] || tpExt[0]['cad']?.[0];
+            if (cad) break;
           }
         }
+
+        // If still not found, search all extension keys
+        if (!cad) {
+          for (const key in ext) {
+            if (key.includes('TrackPointExtension') && ext[key]?.[0]) {
+              const tpData = ext[key][0];
+              for (const dataKey in tpData) {
+                if (dataKey.includes('cad')) {
+                  cad = tpData[dataKey]?.[0];
+                  if (cad) break;
+                }
+              }
+            }
+          }
+        }
+
         return cad ? parseInt(cad) : 0;
       })
       .filter(cad => cad > 0 && cad < 200); // Filter valid cadence range
@@ -146,16 +187,35 @@ export class GpxFileParser {
       groundContactTime: 0,
       trainingEffect: 0,
       laps: this.calculateLaps(allTrackpoints, distances, times),
-      records: allTrackpoints.map((tp, index) => ({
-        timestamp: tp.time?.[0],
-        distance: distances[index - 1] || 0,
-        speed: 0,
-        heartRate: parseInt(tp.extensions?.[0]?.['gpxtpx:TrackPointExtension']?.[0]?.['gpxtpx:hr']?.[0] || 0),
-        cadence: parseInt(tp.extensions?.[0]?.['gpxtpx:TrackPointExtension']?.[0]?.['gpxtpx:cad']?.[0] || 0) * 2,
-        altitude: parseFloat(tp.ele?.[0] || 0),
-        verticalOscillation: 0,
-        groundContactTime: 0
-      }))
+      records: allTrackpoints.map((tp, index) => {
+        let hr = 0, cad = 0, temp = 0;
+
+        if (tp.extensions?.[0]) {
+          const ext = tp.extensions[0];
+          // Try all namespace variations
+          for (const ns of ['ns3:', 'gpxtpx:', 'garmin:', '']) {
+            const tpExt = ext[`${ns}TrackPointExtension`];
+            if (tpExt?.[0]) {
+              if (!hr) hr = parseInt(tpExt[0][`${ns}hr`]?.[0] || tpExt[0]['hr']?.[0] || 0);
+              if (!cad) cad = parseInt(tpExt[0][`${ns}cad`]?.[0] || tpExt[0]['cad']?.[0] || 0);
+              if (!temp) temp = parseFloat(tpExt[0][`${ns}atemp`]?.[0] || tpExt[0]['atemp']?.[0] || 0);
+              if (hr && cad) break;
+            }
+          }
+        }
+
+        return {
+          timestamp: tp.time?.[0],
+          distance: distances[index - 1] || 0,
+          speed: 0,
+          heartRate: hr,
+          cadence: cad * 2, // Double for steps per minute
+          altitude: parseFloat(tp.ele?.[0] || 0),
+          temperature: temp,
+          verticalOscillation: 0,
+          groundContactTime: 0
+        };
+      })
     };
 
     return metrics;
@@ -219,15 +279,35 @@ export class GpxFileParser {
         const lapTrackpoints = trackpoints.slice(lapStartIndex + 1, i + 2);
         const lapHeartRates = lapTrackpoints
           .map(tp => {
-            let hr = tp.extensions?.[0]?.['gpxtpx:TrackPointExtension']?.[0]?.['gpxtpx:hr']?.[0];
-            return hr ? parseInt(hr) : 0;
+            if (!tp.extensions?.[0]) return 0;
+            const ext = tp.extensions[0];
+
+            // Try all namespace variations
+            for (const ns of ['ns3:', 'gpxtpx:', 'garmin:', '']) {
+              const tpExt = ext[`${ns}TrackPointExtension`];
+              if (tpExt?.[0]) {
+                const hr = tpExt[0][`${ns}hr`]?.[0] || tpExt[0]['hr']?.[0];
+                if (hr) return parseInt(hr);
+              }
+            }
+            return 0;
           })
           .filter(hr => hr > 0);
 
         const lapCadences = lapTrackpoints
           .map(tp => {
-            let cad = tp.extensions?.[0]?.['gpxtpx:TrackPointExtension']?.[0]?.['gpxtpx:cad']?.[0];
-            return cad ? parseInt(cad) : 0;
+            if (!tp.extensions?.[0]) return 0;
+            const ext = tp.extensions[0];
+
+            // Try all namespace variations
+            for (const ns of ['ns3:', 'gpxtpx:', 'garmin:', '']) {
+              const tpExt = ext[`${ns}TrackPointExtension`];
+              if (tpExt?.[0]) {
+                const cad = tpExt[0][`${ns}cad`]?.[0] || tpExt[0]['cad']?.[0];
+                if (cad) return parseInt(cad);
+              }
+            }
+            return 0;
           })
           .filter(cad => cad > 0);
 
