@@ -17,7 +17,7 @@
             'application/xml',
             'text/xml'
         ],
-        uploadEndpoint: '/api/upload',
+        uploadEndpoint: '/api/analyze',
         analysisEndpoint: '/api/analyze'
     };
 
