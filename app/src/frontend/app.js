@@ -441,54 +441,539 @@
     }
 
     function updateSummaryMetrics(metrics) {
-        // Update key metrics display
-        // This is a simplified version - enhance based on your HTML structure
-        console.log('Updating summary metrics:', metrics);
+        // Update total time
+        const totalTimeEl = document.getElementById('total-time');
+        if (totalTimeEl && metrics.totalTime) {
+            totalTimeEl.textContent = formatTime(metrics.totalTime);
+        }
+
+        // Update distance
+        const distanceEl = document.getElementById('distance');
+        if (distanceEl && metrics.totalDistance) {
+            distanceEl.textContent = `${metrics.totalDistance.toFixed(2)} km`;
+        }
+
+        // Update average pace
+        const avgPaceEl = document.getElementById('avg-pace');
+        if (avgPaceEl && metrics.avgPace) {
+            avgPaceEl.textContent = formatPace(metrics.avgPace);
+        }
+
+        // Update heart rate metrics
+        const avgHrEl = document.getElementById('avg-hr');
+        if (avgHrEl && metrics.avgHeartRate) {
+            avgHrEl.textContent = Math.round(metrics.avgHeartRate);
+        }
+
+        const maxHrEl = document.getElementById('max-hr');
+        if (maxHrEl && metrics.maxHeartRate) {
+            maxHrEl.textContent = Math.round(metrics.maxHeartRate);
+        }
+
+        // Update cadence
+        const avgCadenceEl = document.getElementById('avg-cadence');
+        if (avgCadenceEl && metrics.avgCadence) {
+            avgCadenceEl.textContent = Math.round(metrics.avgCadence);
+        }
+
+        // Update elevation
+        const elevationGainEl = document.getElementById('elevation-gain');
+        if (elevationGainEl && metrics.totalElevationGain) {
+            elevationGainEl.textContent = Math.round(metrics.totalElevationGain);
+        }
+
+        const elevationLossEl = document.getElementById('elevation-loss');
+        if (elevationLossEl && metrics.totalElevationLoss) {
+            elevationLossEl.textContent = Math.round(metrics.totalElevationLoss);
+        }
+
+        // Update VO2 max if available
+        const vo2maxEl = document.getElementById('vo2max');
+        const vo2maxLabelEl = document.getElementById('vo2max-label');
+        if (vo2maxEl && metrics.vo2Max) {
+            vo2maxEl.textContent = metrics.vo2Max.toFixed(1);
+            if (vo2maxLabelEl) {
+                vo2maxLabelEl.textContent = getVO2MaxLabel(metrics.vo2Max);
+            }
+        }
     }
 
     function renderPerformanceGauge(score) {
-        console.log('Rendering performance gauge:', score);
-        // Chart rendering logic will be added
+        const canvas = document.getElementById('gaugeChart');
+        if (!canvas || !window.Chart) return;
+
+        const ctx = canvas.getContext('2d');
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [score, 100 - score],
+                    backgroundColor: ['#10b981', '#e5e7eb'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '75%',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            }
+        });
     }
 
     function renderPaceChart(metrics) {
-        console.log('Rendering pace chart:', metrics);
-        // Chart rendering logic will be added
+        const canvas = document.getElementById('paceChart');
+        if (!canvas || !window.Chart || !metrics.laps) return;
+
+        const ctx = canvas.getContext('2d');
+        const labels = metrics.laps.map((_, idx) => `Km ${idx + 1}`);
+        const paceData = metrics.laps.map(lap => lap.pace);
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Pace (min/km)',
+                    data: paceData,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => formatPace(context.parsed.y)
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: (value) => formatPace(value)
+                        }
+                    }
+                }
+            }
+        });
     }
 
     function renderHeartRateChart(metrics) {
-        console.log('Rendering heart rate chart:', metrics);
-        // Chart rendering logic will be added
+        const canvas = document.getElementById('hrChart');
+        if (!canvas || !window.Chart || !metrics.laps) return;
+
+        const ctx = canvas.getContext('2d');
+        const labels = metrics.laps.map((_, idx) => `Km ${idx + 1}`);
+        const hrData = metrics.laps.map(lap => lap.avgHeartRate);
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Heart Rate (bpm)',
+                    data: hrData,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
     }
 
     function renderCadenceChart(metrics) {
-        console.log('Rendering cadence chart:', metrics);
-        // Chart rendering logic will be added
+        const canvas = document.getElementById('cadenceChart');
+        if (!canvas || !window.Chart || !metrics.laps) return;
+
+        const ctx = canvas.getContext('2d');
+        const labels = metrics.laps.map((_, idx) => `${idx + 1}`);
+        const cadenceData = metrics.laps.map(lap => lap.avgCadence);
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Cadence (spm)',
+                    data: cadenceData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    annotation: {
+                        annotations: {
+                            optimalLow: {
+                                type: 'line',
+                                yMin: 170,
+                                yMax: 170,
+                                borderColor: 'rgba(16, 185, 129, 0.5)',
+                                borderWidth: 2,
+                                borderDash: [5, 5]
+                            },
+                            optimalHigh: {
+                                type: 'line',
+                                yMin: 180,
+                                yMax: 180,
+                                borderColor: 'rgba(16, 185, 129, 0.5)',
+                                borderWidth: 2,
+                                borderDash: [5, 5]
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 140,
+                        max: 200
+                    }
+                }
+            }
+        });
     }
 
     function renderElevationChart(metrics) {
-        console.log('Rendering elevation chart:', metrics);
-        // Chart rendering logic will be added
+        const canvas = document.getElementById('elevationChart');
+        if (!canvas || !window.Chart || !metrics.laps) return;
+
+        const ctx = canvas.getContext('2d');
+        const labels = metrics.laps.map((_, idx) => `${idx + 1}`);
+        const elevationData = metrics.laps.map(lap => lap.elevation || 0);
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Elevation (m)',
+                    data: elevationData,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
     }
 
     function renderSplitsChart(metrics) {
-        console.log('Rendering splits chart:', metrics);
-        // Chart rendering logic will be added
+        const canvas = document.getElementById('splitsChart');
+        if (!canvas || !window.Chart || !metrics.laps) return;
+
+        const ctx = canvas.getContext('2d');
+        const labels = metrics.laps.map((_, idx) => `Km ${idx + 1}`);
+        const splitTimes = metrics.laps.map(lap => lap.totalTime / 60); // Convert to minutes
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Split Time (minutes)',
+                    data: splitTimes,
+                    backgroundColor: '#667eea',
+                    borderColor: '#667eea',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => formatTime(context.parsed.y * 60)
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => `${value.toFixed(1)} min`
+                        }
+                    }
+                }
+            }
+        });
     }
 
     function renderFormGauges(metrics) {
-        console.log('Rendering form gauges:', metrics);
-        // Chart rendering logic will be added
+        // Ground Contact Time Gauge
+        if (metrics.groundContactTime > 0) {
+            renderGauge('gctGauge', metrics.groundContactTime, 200, 250, 'ms');
+            const gctValueEl = document.getElementById('gct-value');
+            if (gctValueEl) {
+                gctValueEl.textContent = `${metrics.groundContactTime} ms`;
+            }
+        }
+
+        // Vertical Oscillation Gauge
+        if (metrics.verticalOscillation > 0) {
+            renderGauge('voGauge', metrics.verticalOscillation, 6, 10, 'cm');
+            const voValueEl = document.getElementById('vo-value');
+            if (voValueEl) {
+                voValueEl.textContent = `${metrics.verticalOscillation.toFixed(1)} cm`;
+            }
+        }
+
+        // Stride Length Gauge
+        if (metrics.avgStrideLength > 0) {
+            renderGauge('strideGauge', metrics.avgStrideLength, 1.0, 1.4, 'm');
+            const strideValueEl = document.getElementById('stride-value');
+            if (strideValueEl) {
+                strideValueEl.textContent = `${metrics.avgStrideLength.toFixed(2)} m`;
+            }
+        }
+    }
+
+    function renderGauge(canvasId, value, minOptimal, maxOptimal, unit) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !window.Chart) return;
+
+        const ctx = canvas.getContext('2d');
+        const isInRange = value >= minOptimal && value <= maxOptimal;
+        const percentage = Math.min(Math.max((value / maxOptimal) * 100, 0), 100);
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [percentage, 100 - percentage],
+                    backgroundColor: [
+                        isInRange ? '#10b981' : '#f59e0b',
+                        '#e5e7eb'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            }
+        });
     }
 
     function renderInsights(insights) {
-        console.log('Rendering insights:', insights);
-        // Insights rendering logic will be added
+        const insightsGrid = document.getElementById('insights-grid');
+        if (!insightsGrid) return;
+
+        insightsGrid.innerHTML = '';
+
+        // Handle different insight structures
+        let allInsights = [];
+
+        // If insights is an array
+        if (Array.isArray(insights)) {
+            allInsights = insights;
+        }
+        // If insights has nested analysis objects
+        else if (typeof insights === 'object') {
+            if (insights.paceAnalysis && Array.isArray(insights.paceAnalysis)) {
+                allInsights.push(...insights.paceAnalysis);
+            }
+            if (insights.heartRateAnalysis && Array.isArray(insights.heartRateAnalysis)) {
+                allInsights.push(...insights.heartRateAnalysis);
+            }
+            if (insights.cadenceAnalysis && Array.isArray(insights.cadenceAnalysis)) {
+                allInsights.push(...insights.cadenceAnalysis);
+            }
+            if (insights.formAnalysis && Array.isArray(insights.formAnalysis)) {
+                allInsights.push(...insights.formAnalysis);
+            }
+        }
+
+        // Take top 6 insights or show all if less
+        const displayInsights = allInsights.slice(0, 6);
+
+        if (displayInsights.length === 0) {
+            insightsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #6b7280;">No insights available</p>';
+            return;
+        }
+
+        displayInsights.forEach(insight => {
+            const card = document.createElement('div');
+            const insightType = insight.type || 'finding';
+            card.className = `insight-card ${insightType}`;
+
+            const icon = insightType === 'strength' ? '✓' :
+                        insightType === 'weakness' ? '!' :
+                        insightType === 'improvement' ? '⚠' : '•';
+            const color = insightType === 'strength' ? '#10b981' :
+                         insightType === 'weakness' ? '#ef4444' :
+                         insightType === 'improvement' ? '#f59e0b' : '#667eea';
+
+            card.innerHTML = `
+                <div class="insight-icon" style="color: ${color}">${icon}</div>
+                <div class="insight-content">
+                    <h4 class="insight-title">${insight.message}</h4>
+                    ${insight.confidence ? `<div class="confidence-badge">${insight.confidence}% Confidence</div>` : ''}
+                </div>
+            `;
+
+            insightsGrid.appendChild(card);
+        });
     }
 
     function renderRecommendations(recommendations) {
-        console.log('Rendering recommendations:', recommendations);
-        // Recommendations rendering logic will be added
+        // Update goal time
+        const goalTimeEl = document.getElementById('goal-time');
+        const goalImprovementEl = document.getElementById('goal-improvement');
+
+        if (recommendations.timeGoals && recommendations.timeGoals.goals) {
+            const primaryGoal = recommendations.timeGoals.goals[1]; // 3-month goal
+            if (goalTimeEl) {
+                goalTimeEl.textContent = primaryGoal.targetTime;
+            }
+            if (goalImprovementEl) {
+                goalImprovementEl.textContent = `${primaryGoal.improvement} improvement`;
+            }
+        }
+
+        // Update training focus
+        const focusList = document.getElementById('focus-list');
+        if (focusList && recommendations.trainingPlan) {
+            focusList.innerHTML = '';
+            recommendations.trainingPlan.priorities.slice(0, 3).forEach(priority => {
+                const li = document.createElement('li');
+                li.textContent = priority.focus;
+                focusList.appendChild(li);
+            });
+        }
+
+        // Update recommendations list
+        const recommendationsList = document.getElementById('recommendations-list');
+        if (recommendationsList && recommendations.trainingPlan) {
+            recommendationsList.innerHTML = '';
+            recommendations.trainingPlan.priorities.forEach((priority, index) => {
+                const card = document.createElement('div');
+                card.className = 'recommendation-card';
+                card.innerHTML = `
+                    <h4>${index + 1}. ${priority.focus}</h4>
+                    <p>${priority.rationale}</p>
+                    <div class="confidence-badge">${priority.confidence}% Confidence</div>
+                `;
+                recommendationsList.appendChild(card);
+            });
+        }
+
+        // Update weekly structure
+        const weekGrid = document.getElementById('week-grid');
+        if (weekGrid && recommendations.weeklyStructure) {
+            weekGrid.innerHTML = '';
+            recommendations.weeklyStructure.structure.forEach(day => {
+                const dayCard = document.createElement('div');
+                dayCard.className = 'day-card';
+                dayCard.innerHTML = `
+                    <div class="day-label">${day.day}</div>
+                    <div class="day-workout">
+                        <div class="workout-type">${day.workout}</div>
+                        ${day.duration || day.pace ? `
+                            <div class="workout-details">
+                                ${day.duration ? `Duration: ${day.duration}` : ''}
+                                ${day.duration && day.pace ? ' | ' : ''}
+                                ${day.pace ? `Pace: ${day.pace}` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                weekGrid.appendChild(dayCard);
+            });
+        }
+    }
+
+    // Helper functions for formatting
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.round(seconds % 60);
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function formatPace(paceMinPerKm) {
+        const minutes = Math.floor(paceMinPerKm);
+        const seconds = Math.round((paceMinPerKm - minutes) * 60);
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function getVO2MaxLabel(vo2max) {
+        if (vo2max >= 55) return 'Excellent';
+        if (vo2max >= 45) return 'Good';
+        if (vo2max >= 35) return 'Average';
+        return 'Below Average';
     }
 
     // Initialize when DOM is ready

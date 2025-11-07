@@ -300,7 +300,11 @@
 
     <!-- Scripts -->
     <script src="app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
+        // Global variable to store analysis data for PDF export
+        let globalAnalysisData = null;
+
         // Initialize results page when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
             // Try to load analysis results from sessionStorage
@@ -310,6 +314,9 @@
                 try {
                     const results = JSON.parse(analysisData);
                     console.log('Loaded analysis results:', results);
+
+                    // Store globally for PDF export
+                    globalAnalysisData = results;
 
                     // Show loading briefly then display results
                     setTimeout(() => {
@@ -338,6 +345,110 @@
                 window.location.href = '/';
             }, 2000);
         }
+
+        // PDF Export Function
+        async function exportPDF() {
+            if (!globalAnalysisData) {
+                alert('No analysis data available for export.');
+                return;
+            }
+
+            // Show loading state on button
+            const buttons = document.querySelectorAll('.export-btn, .export-btn-large');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="icon">⏳</span> Generating PDF...';
+            });
+
+            try {
+                // Dynamically import PDFGenerator
+                const module = await import('./pdf-integration.js');
+
+                // Import the PDFGenerator class
+                const PDFGeneratorModule = await import('../pdf-export/PDFGenerator.js');
+                const PDFGenerator = PDFGeneratorModule.PDFGenerator || PDFGeneratorModule.default;
+
+                // Create generator instance
+                const generator = new PDFGenerator();
+
+                // Generate PDF
+                const pdf = await generator.generatePDF(globalAnalysisData);
+
+                // Create filename with date
+                const date = new Date().toISOString().split('T')[0];
+                const filename = `Dynastride-5K-Analysis-${date}.pdf`;
+
+                // Download PDF
+                pdf.save(filename);
+
+                // Show success notification
+                showNotification('PDF report generated successfully!', 'success');
+
+            } catch (error) {
+                console.error('PDF export failed:', error);
+                showNotification('Failed to generate PDF: ' + error.message, 'error');
+            } finally {
+                // Restore button state
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span class="icon">📄</span> Export PDF Report';
+                });
+            }
+        }
+
+        // Show notification helper
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#667eea'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 9999;
+                animation: slideIn 0.3s ease-out;
+                font-weight: 500;
+            `;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Add animation styles
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
