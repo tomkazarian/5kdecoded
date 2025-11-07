@@ -584,9 +584,9 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        // Convert km laps to mile markers (approximate)
+        // Create cumulative distance labels starting from 0
         const labels = metrics.laps.map((_, idx) => {
-            const miles = (idx + 1) * 0.621371;
+            const miles = idx * 0.621371; // Start of each segment
             return `${miles.toFixed(1)} mi`;
         });
         // Convert pace from min/km to min/mile
@@ -637,9 +637,9 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        // Convert km laps to mile markers
+        // Create cumulative distance labels starting from 0
         const labels = metrics.laps.map((_, idx) => {
-            const miles = (idx + 1) * 0.621371;
+            const miles = idx * 0.621371; // Start of each segment
             return `${miles.toFixed(1)} mi`;
         });
         const hrData = metrics.laps.map(lap => lap.avgHeartRate);
@@ -681,9 +681,9 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        // Convert km laps to mile markers
+        // Create cumulative distance labels starting from 0
         const labels = metrics.laps.map((_, idx) => {
-            const miles = (idx + 1) * 0.621371;
+            const miles = idx * 0.621371; // Start of each segment
             return `${miles.toFixed(1)} mi`;
         });
         const cadenceData = metrics.laps.map(lap => lap.avgCadence);
@@ -747,9 +747,9 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        // Convert km laps to mile markers
+        // Create cumulative distance labels starting from 0
         const labels = metrics.laps.map((_, idx) => {
-            const miles = (idx + 1) * 0.621371;
+            const miles = idx * 0.621371; // Start of each segment
             return `${miles.toFixed(1)} mi`;
         });
         const elevationData = metrics.laps.map(lap => lap.elevation || 0);
@@ -790,10 +790,11 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        // Convert km laps to mile markers
+        // Create split labels for each segment (0-0.6mi, 0.6-1.2mi, etc.)
         const labels = metrics.laps.map((_, idx) => {
-            const miles = (idx + 1) * 0.621371;
-            return `Mile ${miles.toFixed(1)}`;
+            const startMiles = idx * 0.621371;
+            const endMiles = (idx + 1) * 0.621371;
+            return `${startMiles.toFixed(1)}-${endMiles.toFixed(1)} mi`;
         });
         const splitTimes = metrics.laps.map(lap => lap.totalTime / 60); // Convert to minutes
 

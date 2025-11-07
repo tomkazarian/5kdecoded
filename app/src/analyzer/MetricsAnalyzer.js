@@ -111,10 +111,14 @@ export class MetricsAnalyzer {
     // Opening paragraph - race overview
     const timeMin = Math.floor(totalTime / 60);
     const timeSec = Math.round(totalTime % 60);
-    const paceMin = Math.floor(avgPace);
-    const paceSec = Math.round((avgPace % 1) * 60);
 
-    let opening = `You completed this ${totalDistance.toFixed(2)}km race in ${timeMin}:${String(timeSec).padStart(2, '0')} at an average pace of ${paceMin}:${String(paceSec).padStart(2, '0')}/km. `;
+    // Convert to miles
+    const distanceMiles = this.kmToMiles(totalDistance);
+    const pacePerMile = avgPace * 1.609344;
+    const paceMin = Math.floor(pacePerMile);
+    const paceSec = Math.round((pacePerMile % 1) * 60);
+
+    let opening = `You completed this ${distanceMiles.toFixed(2)} mile race in ${timeMin}:${String(timeSec).padStart(2, '0')} at an average pace of ${paceMin}:${String(paceSec).padStart(2, '0')}/mile. `;
 
     if (analysis.overallScore >= 85) {
       opening += `This was a strong performance with excellent execution across all metrics. `;
@@ -131,7 +135,7 @@ export class MetricsAnalyzer {
       if (lastLap.pace < firstLap.pace - 0.15) {
         opening += `You demonstrated smart pacing with a negative split, finishing stronger than you started.`;
       } else if (lastLap.pace > firstLap.pace + 0.2) {
-        opening += `The positive split indicates you may have started too aggressively, which led to slowing in later kilometers.`;
+        opening += `The positive split indicates you may have started too aggressively, which led to slowing in later miles.`;
       } else {
         opening += `Your pacing was notably consistent throughout the race.`;
       }
@@ -139,25 +143,28 @@ export class MetricsAnalyzer {
 
     commentary.push(opening);
 
-    // Analyze first third of race (early kilometers)
+    // Analyze first third of race (early miles)
     const earlyLaps = laps.slice(0, Math.ceil(laps.length / 3));
     if (earlyLaps.length > 0) {
-      const earlyAvgPace = earlyLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / earlyLaps.length;
+      const earlyAvgPaceKm = earlyLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / earlyLaps.length;
+      const earlyAvgPace = earlyAvgPaceKm * 1.609344; // Convert to per mile
       const earlyAvgHR = earlyLaps.reduce((sum, lap) => sum + (lap.avgHeartRate || lap.heartRate || 0), 0) / earlyLaps.length;
       const earlyPaceMin = Math.floor(earlyAvgPace);
       const earlyPaceSec = Math.round((earlyAvgPace % 1) * 60);
 
-      let earlyPara = `In the opening kilometers, you averaged ${earlyPaceMin}:${String(earlyPaceSec).padStart(2, '0')}/km`;
+      let earlyPara = `In the opening miles, you averaged ${earlyPaceMin}:${String(earlyPaceSec).padStart(2, '0')}/mile`;
 
       if (earlyAvgHR > 0) {
         earlyPara += ` with an average heart rate of ${Math.round(earlyAvgHR)} bpm`;
       }
       earlyPara += `. `;
 
-      // Compare to overall pace
-      if (earlyAvgPace < avgPace - 0.15) {
+      // Compare to overall pace (need to convert for comparison)
+      const avgPacePerMile = avgPace * 1.609344;
+      const earlyVsAvg = earlyAvgPace - avgPacePerMile;
+      if (earlyVsAvg < -0.24) { // -0.15 km/min adjusted for miles
         earlyPara += `This was notably faster than your overall average, suggesting an aggressive start. While this can work for experienced runners, it may have contributed to fatigue later. `;
-      } else if (earlyAvgPace > avgPace + 0.1) {
+      } else if (earlyVsAvg > 0.16) { // +0.1 km/min adjusted for miles
         earlyPara += `This conservative start allowed you to build into the race, which is a solid strategy for maintaining energy. `;
       } else {
         earlyPara += `This matched your overall pace well, indicating good race awareness from the start. `;
@@ -182,12 +189,13 @@ export class MetricsAnalyzer {
     const midLaps = laps.slice(midStart, midEnd);
 
     if (midLaps.length > 0) {
-      const midAvgPace = midLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / midLaps.length;
+      const midAvgPaceKm = midLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / midLaps.length;
+      const midAvgPace = midAvgPaceKm * 1.609344; // Convert to per mile
       const midAvgHR = midLaps.reduce((sum, lap) => sum + (lap.avgHeartRate || lap.heartRate || 0), 0) / midLaps.length;
       const midPaceMin = Math.floor(midAvgPace);
       const midPaceSec = Math.round((midAvgPace % 1) * 60);
 
-      let midPara = `Through the middle kilometers, your pace shifted to ${midPaceMin}:${String(midPaceSec).padStart(2, '0')}/km`;
+      let midPara = `Through the middle miles, your pace shifted to ${midPaceMin}:${String(midPaceSec).padStart(2, '0')}/mile`;
 
       if (midAvgHR > 0 && earlyLaps.length > 0) {
         const earlyAvgHR = earlyLaps.reduce((sum, lap) => sum + (lap.avgHeartRate || lap.heartRate || 0), 0) / earlyLaps.length;
@@ -204,13 +212,15 @@ export class MetricsAnalyzer {
 
       // Compare mid to early pace
       if (earlyLaps.length > 0) {
-        const earlyAvgPace = earlyLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / earlyLaps.length;
-        if (midAvgPace > earlyAvgPace + 0.15) {
+        const earlyAvgPaceKm = earlyLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / earlyLaps.length;
+        const earlyAvgPaceMile = earlyAvgPaceKm * 1.609344;
+        const paceChange = midAvgPace - earlyAvgPaceMile;
+        if (paceChange > 0.24) { // 0.15 km/min adjusted for miles
           midPara += `This represents significant slowing from the early pace, indicating fatigue began setting in. Building aerobic capacity through base training would help maintain pace longer. `;
-        } else if (midAvgPace < earlyAvgPace) {
+        } else if (paceChange < 0) {
           midPara += `Remarkably, you actually maintained or improved your pace, demonstrating excellent endurance and race execution. `;
         } else {
-          midPara += `The pace remained relatively consistent with the early kilometers, showing solid conditioning. `;
+          midPara += `The pace remained relatively consistent with the early miles, showing solid conditioning. `;
         }
       }
 
@@ -220,24 +230,27 @@ export class MetricsAnalyzer {
     // Analyze finish (last third)
     const finishLaps = laps.slice(midEnd);
     if (finishLaps.length > 0) {
-      const finishAvgPace = finishLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / finishLaps.length;
+      const finishAvgPaceKm = finishLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / finishLaps.length;
+      const finishAvgPace = finishAvgPaceKm * 1.609344; // Convert to per mile
       const finishAvgHR = finishLaps.reduce((sum, lap) => sum + (lap.avgHeartRate || lap.heartRate || 0), 0) / finishLaps.length;
       const finishPaceMin = Math.floor(finishAvgPace);
       const finishPaceSec = Math.round((finishAvgPace % 1) * 60);
 
-      let finishPara = `In the closing kilometers, you`;
+      let finishPara = `In the closing miles, you`;
 
       if (midLaps.length > 0) {
-        const midAvgPace = midLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / midLaps.length;
-        if (finishAvgPace < midAvgPace - 0.1) {
-          finishPara += ` found another gear, accelerating to ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/km. This strong finish demonstrates both physical capability and mental toughness. `;
-        } else if (finishAvgPace > midAvgPace + 0.2) {
-          finishPara += ` slowed to ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/km, likely due to accumulated fatigue. Incorporating tempo runs and lactate threshold work would help maintain pace when tired. `;
+        const midAvgPaceKm = midLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / midLaps.length;
+        const midAvgPaceMile = midAvgPaceKm * 1.609344;
+        const paceChange = finishAvgPace - midAvgPaceMile;
+        if (paceChange < -0.16) { // -0.1 km/min adjusted for miles
+          finishPara += ` found another gear, accelerating to ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/mile. This strong finish demonstrates both physical capability and mental toughness. `;
+        } else if (paceChange > 0.32) { // +0.2 km/min adjusted for miles
+          finishPara += ` slowed to ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/mile, likely due to accumulated fatigue. Incorporating tempo runs and lactate threshold work would help maintain pace when tired. `;
         } else {
-          finishPara += ` maintained ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/km to the finish. `;
+          finishPara += ` maintained ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/mile to the finish. `;
         }
       } else {
-        finishPara += ` finished at ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/km pace. `;
+        finishPara += ` finished at ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/mile pace. `;
       }
 
       // Add final heart rate observation
@@ -706,29 +719,40 @@ export class MetricsAnalyzer {
         const lastKm = paces[paces.length - 1];
         const paceMin = Math.min(...paces);
         const paceMax = Math.max(...paces);
-        const fastestMin = Math.floor(paceMin);
-        const fastestSec = Math.round((paceMin % 1) * 60);
-        const slowestMin = Math.floor(paceMax);
-        const slowestSec = Math.round((paceMax % 1) * 60);
+
+        // Convert to per mile for display
+        const firstMile = firstKm * 1.609344;
+        const lastMile = lastKm * 1.609344;
+        const fastestMile = paceMin * 1.609344;
+        const slowestMile = paceMax * 1.609344;
+
+        const lastMileMin = Math.floor(lastMile);
+        const lastMileSec = Math.round((lastMile % 1) * 60);
+        const firstMileMin = Math.floor(firstMile);
+        const firstMileSec = Math.round((firstMile % 1) * 60);
+        const fastestMin = Math.floor(fastestMile);
+        const fastestSec = Math.round((fastestMile % 1) * 60);
+        const slowestMin = Math.floor(slowestMile);
+        const slowestSec = Math.round((slowestMile % 1) * 60);
 
         if (lastKm < firstKm - 0.15) {
           insights.push({
             type: 'strength',
-            message: `Strong negative split - finished faster than you started (${Math.floor(lastKm)}:${String(Math.floor((lastKm % 1) * 60)).padStart(2, '0')}/km final pace)`,
+            message: `Strong negative split - finished faster than you started (${lastMileMin}:${String(lastMileSec).padStart(2, '0')}/mile final pace)`,
             confidence: 94,
             recommendation: 'Excellent pacing strategy - maintain this approach in future races'
           });
         } else if (lastKm > firstKm + 0.2) {
           insights.push({
             type: 'weakness',
-            message: `Positive split detected - slowed significantly in later kilometers (started ${Math.floor(firstKm)}:${String(Math.floor((firstKm % 1) * 60)).padStart(2, '0')}, finished ${Math.floor(lastKm)}:${String(Math.floor((lastKm % 1) * 60)).padStart(2, '0')})`,
+            message: `Positive split detected - slowed significantly in later miles (started ${firstMileMin}:${String(firstMileSec).padStart(2, '0')}, finished ${lastMileMin}:${String(lastMileSec).padStart(2, '0')})`,
             confidence: 93,
             recommendation: 'Start more conservatively - aim for even splits or slight negative split'
           });
         } else {
           insights.push({
             type: 'strength',
-            message: `Even pacing strategy - consistent pace throughout race (${fastestMin}:${fastestSec.toString().padStart(2, '0')} to ${slowestMin}:${slowestSec.toString().padStart(2, '0')}/km range)`,
+            message: `Even pacing strategy - consistent pace throughout race (${fastestMin}:${fastestSec.toString().padStart(2, '0')} to ${slowestMin}:${slowestSec.toString().padStart(2, '0')}/mile range)`,
             confidence: 91
           });
         }
@@ -1180,7 +1204,7 @@ export class MetricsAnalyzer {
   generateSplitsChartCommentary(metrics, analysis) {
     const laps = metrics.laps || [];
     if (laps.length < 2) {
-      return 'Split data shows your kilometer-by-kilometer pacing throughout the race.';
+      return 'Split data shows your mile-by-mile pacing throughout the race.';
     }
 
     const firstLapPace = laps[0].pace;
