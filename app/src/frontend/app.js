@@ -393,6 +393,33 @@
     }
 
     /**
+     * Unit conversion utilities
+     */
+    function kmToMiles(km) {
+        return km * 0.621371;
+    }
+
+    function milesToKm(miles) {
+        return miles * 1.609344;
+    }
+
+    function formatPacePerMile(pacePerKm) {
+        if (!pacePerKm || pacePerKm === 0) return '0:00';
+        // Convert min/km to min/mile
+        const pacePerMile = pacePerKm * 1.609344;
+        const mins = Math.floor(pacePerMile);
+        const secs = Math.round((pacePerMile % 1) * 60);
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function getVO2MaxLabel(vo2) {
+        if (vo2 > 55) return 'Excellent Fitness Level';
+        if (vo2 > 45) return 'Good Fitness Level';
+        if (vo2 > 35) return 'Average Fitness Level';
+        return 'Below Average Fitness Level';
+    }
+
+    /**
      * Initialize results page with analysis data
      * This function is called from results.html
      */
@@ -411,16 +438,16 @@
         document.getElementById('score-value').textContent = performanceScore;
         document.getElementById('score-label').textContent = getScoreRating(performanceScore);
 
-        // Update summary metrics
-        updateSummaryMetrics(metrics);
+        // Update summary metrics (MILES)
+        updateSummaryMetrics(metrics, analysis);
 
-        // Render all charts
+        // Render all charts (MILES)
         renderPerformanceGauge(performanceScore);
-        renderPaceChart(metrics);
-        renderHeartRateChart(metrics);
-        renderCadenceChart(metrics);
-        renderElevationChart(metrics);
-        renderSplitsChart(metrics);
+        renderPaceChart(metrics, analysis);
+        renderHeartRateChart(metrics, analysis);
+        renderCadenceChart(metrics, analysis);
+        renderElevationChart(metrics, analysis);
+        renderSplitsChart(metrics, analysis);
         renderFormGauges(metrics);
 
         // Render race commentary (if available)
@@ -428,11 +455,24 @@
             renderRaceCommentary(analysis.raceCommentary);
         }
 
-        // Render insights and recommendations
+        // Render chart commentary
+        if (analysis?.chartCommentary) {
+            renderChartCommentary('pace', analysis.chartCommentary.pace);
+            renderChartCommentary('heartRate', analysis.chartCommentary.heartRate);
+            renderChartCommentary('cadence', analysis.chartCommentary.cadence);
+            renderChartCommentary('elevation', analysis.chartCommentary.elevation);
+            renderChartCommentary('splits', analysis.chartCommentary.splits);
+        }
+
+        // Render insights
         if (analysis?.insights) {
             renderInsights(analysis.insights);
         }
-        if (recommendations) {
+
+        // Render training recommendations
+        if (analysis?.trainingRecommendations) {
+            renderTrainingRecommendations(analysis.trainingRecommendations);
+        } else if (recommendations) {
             renderRecommendations(recommendations);
         }
     }
@@ -445,23 +485,24 @@
         return 'Needs Work';
     }
 
-    function updateSummaryMetrics(metrics) {
+    function updateSummaryMetrics(metrics, analysis) {
         // Update total time
         const totalTimeEl = document.getElementById('total-time');
         if (totalTimeEl && metrics.totalTime) {
             totalTimeEl.textContent = formatTime(metrics.totalTime);
         }
 
-        // Update distance
+        // Update distance (MILES)
         const distanceEl = document.getElementById('distance');
         if (distanceEl && metrics.totalDistance) {
-            distanceEl.textContent = `${metrics.totalDistance.toFixed(2)} km`;
+            const miles = kmToMiles(metrics.totalDistance);
+            distanceEl.textContent = `${miles.toFixed(2)} mi`;
         }
 
-        // Update average pace
+        // Update average pace (MIN/MILE)
         const avgPaceEl = document.getElementById('avg-pace');
         if (avgPaceEl && metrics.avgPace) {
-            avgPaceEl.textContent = formatPace(metrics.avgPace);
+            avgPaceEl.textContent = formatPacePerMile(metrics.avgPace);
         }
 
         // Update heart rate metrics
@@ -481,24 +522,28 @@
             avgCadenceEl.textContent = Math.round(metrics.avgCadence);
         }
 
-        // Update elevation
+        // Update elevation (from metrics, not analysis)
         const elevationGainEl = document.getElementById('elevation-gain');
-        if (elevationGainEl && metrics.totalElevationGain) {
-            elevationGainEl.textContent = Math.round(metrics.totalElevationGain);
+        if (elevationGainEl) {
+            const gain = metrics.elevationGain || metrics.totalElevationGain || 0;
+            elevationGainEl.textContent = Math.round(gain);
         }
 
         const elevationLossEl = document.getElementById('elevation-loss');
-        if (elevationLossEl && metrics.totalElevationLoss) {
-            elevationLossEl.textContent = Math.round(metrics.totalElevationLoss);
+        if (elevationLossEl) {
+            const loss = metrics.elevationLoss || metrics.totalElevationLoss || 0;
+            elevationLossEl.textContent = Math.round(loss);
         }
 
-        // Update VO2 max if available
+        // Update VO2 max if available (from analysis, not metrics)
         const vo2maxEl = document.getElementById('vo2max');
         const vo2maxLabelEl = document.getElementById('vo2max-label');
-        if (vo2maxEl && metrics.vo2Max) {
-            vo2maxEl.textContent = metrics.vo2Max.toFixed(1);
+        if (analysis && analysis.vo2Max) {
+            if (vo2maxEl) {
+                vo2maxEl.textContent = analysis.vo2Max.toFixed(1);
+            }
             if (vo2maxLabelEl) {
-                vo2maxLabelEl.textContent = getVO2MaxLabel(metrics.vo2Max);
+                vo2maxLabelEl.textContent = getVO2MaxLabel(analysis.vo2Max);
             }
         }
     }
@@ -831,6 +876,122 @@
                 }
             }
         });
+    }
+
+    /**
+     * Render race commentary (3-4 paragraphs)
+     */
+    function renderRaceCommentary(commentary) {
+        const commentarySection = document.getElementById('commentary-section');
+        const commentaryContent = document.getElementById('commentary-content');
+
+        if (!commentarySection || !commentaryContent || !commentary || commentary.length === 0) {
+            return;
+        }
+
+        // Show the section
+        commentarySection.style.display = 'block';
+
+        // Clear existing content
+        commentaryContent.innerHTML = '';
+
+        // Add each paragraph
+        commentary.forEach(paragraph => {
+            const p = document.createElement('p');
+            p.className = 'commentary-paragraph';
+            p.textContent = paragraph;
+            commentaryContent.appendChild(p);
+        });
+
+        console.log(`Rendered ${commentary.length} paragraphs of race commentary`);
+    }
+
+    /**
+     * Render training recommendations
+     */
+    function renderTrainingRecommendations(recommendations) {
+        if (!recommendations) return;
+
+        console.log('Rendering training recommendations:', recommendations);
+
+        // Update weekly goal
+        const goalTimeEl = document.getElementById('goal-time');
+        const goalImprovementEl = document.getElementById('goal-improvement');
+
+        if (goalTimeEl && recommendations.weeklyGoal) {
+            goalTimeEl.textContent = recommendations.weeklyGoal.goalTime;
+        }
+        if (goalImprovementEl && recommendations.weeklyGoal) {
+            goalImprovementEl.textContent = `${recommendations.weeklyGoal.improvement} improvement in ${recommendations.weeklyGoal.timeframe}`;
+        }
+
+        // Populate training focus list
+        const focusList = document.getElementById('focus-list');
+        if (focusList && recommendations.trainingFocus) {
+            focusList.innerHTML = '';
+            recommendations.trainingFocus.forEach(focus => {
+                const li = document.createElement('li');
+                li.textContent = focus;
+                focusList.appendChild(li);
+            });
+        }
+
+        // Populate workout plan
+        const weekGrid = document.getElementById('week-grid');
+        if (weekGrid && recommendations.workoutPlan) {
+            weekGrid.innerHTML = '';
+            recommendations.workoutPlan.forEach(workout => {
+                const dayCard = document.createElement('div');
+                dayCard.className = 'day-card';
+                dayCard.innerHTML = `
+                    <h4>${workout.day}</h4>
+                    <div class="workout-name">${workout.workout}</div>
+                    <div class="workout-details">
+                        <span>${workout.duration}</span>
+                        <span>${workout.intensity}</span>
+                    </div>
+                    <div class="workout-purpose">${workout.purpose}</div>
+                `;
+                weekGrid.appendChild(dayCard);
+            });
+        }
+
+        console.log('Training recommendations rendered successfully');
+    }
+
+    /**
+     * Render chart commentary
+     */
+    function renderChartCommentary(chartType, commentary) {
+        if (!commentary) return;
+
+        // Map chart types to their container IDs
+        const chartMap = {
+            'pace': 'paceChart',
+            'heartRate': 'hrChart',
+            'cadence': 'cadenceChart',
+            'elevation': 'elevationChart',
+            'splits': 'splitsChart'
+        };
+
+        const chartId = chartMap[chartType];
+        if (!chartId) return;
+
+        const chartElement = document.getElementById(chartId);
+        if (!chartElement) return;
+
+        const chartContainer = chartElement.closest('.chart-container');
+        if (!chartContainer) return;
+
+        // Remove existing commentary
+        const existing = chartContainer.querySelector('.chart-commentary');
+        if (existing) existing.remove();
+
+        // Add new commentary
+        const commentaryDiv = document.createElement('div');
+        commentaryDiv.className = 'chart-commentary';
+        commentaryDiv.innerHTML = `<p>${commentary}</p>`;
+        chartContainer.appendChild(commentaryDiv);
     }
 
     function renderInsights(insights) {
