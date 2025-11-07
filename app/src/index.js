@@ -71,15 +71,22 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
     const userProfile = req.body.userProfile ? JSON.parse(req.body.userProfile) : {};
 
     // Parse the file
+    console.log('Step 1: Parsing file...');
     const metrics = await parser.parse(req.file.buffer, req.file.originalname);
+    console.log('Step 1: Parsing complete');
 
     // Analyze metrics
+    console.log('Step 2: Analyzing metrics...');
     const analysis = analyzer.analyze(metrics, userProfile);
+    console.log('Step 2: Analysis complete');
 
     // Generate recommendations
+    console.log('Step 3: Generating recommendations...');
     const recommendations = recommender.generateRecommendations(metrics, analysis, userProfile);
+    console.log('Step 3: Recommendations complete');
 
     // Return complete analysis
+    console.log('Sending response...');
     res.json({
       success: true,
       fileName: req.file.originalname,
@@ -88,9 +95,11 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
       analysis,
       recommendations
     });
+    console.log('Response sent successfully');
 
   } catch (error) {
     console.error('Analysis error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       error: error.message || 'Analysis failed'
