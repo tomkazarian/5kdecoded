@@ -1,0 +1,547 @@
+/**
+ * Metrics Analyzer
+ * Analyzes running metrics and provides insights based on sports science research
+ */
+
+export class MetricsAnalyzer {
+  constructor() {
+    // Ideal ranges based on sports science research
+    this.idealRanges = {
+      cadence: { min: 170, max: 180, optimal: 175 },
+      heartRateZones: {
+        zone1: { min: 0.5, max: 0.6, name: 'Easy', purpose: 'Recovery' },
+        zone2: { min: 0.6, max: 0.7, name: 'Aerobic', purpose: 'Base building' },
+        zone3: { min: 0.7, max: 0.8, name: 'Tempo', purpose: 'Lactate threshold' },
+        zone4: { min: 0.8, max: 0.9, name: 'Threshold', purpose: 'VO2 max development' },
+        zone5: { min: 0.9, max: 1.0, name: 'Maximum', purpose: 'Anaerobic capacity' }
+      },
+      verticalOscillation: { max: 10.0, optimal: 8.0 }, // cm
+      groundContactTime: { max: 250, optimal: 220 }, // ms
+      strideLength: { min: 1.2, max: 1.4, optimal: 1.3 } // meters
+    };
+  }
+
+  /**
+   * Analyze all metrics and generate insights
+   * @param {Object} metrics - Parsed metrics from parser
+   * @param {Object} userProfile - User profile (age, gender, fitness level)
+   * @returns {Object} Analysis results with insights and scores
+   */
+  analyze(metrics, userProfile = {}) {
+    const maxHR = userProfile.maxHeartRate || this.estimateMaxHeartRate(userProfile.age);
+
+    const analysis = {
+      overallScore: 0,
+      paceAnalysis: this.analyzePace(metrics),
+      cadenceAnalysis: this.analyzeCadence(metrics),
+      heartRateAnalysis: this.analyzeHeartRate(metrics, maxHR),
+      formAnalysis: this.analyzeRunningForm(metrics),
+      consistencyAnalysis: this.analyzeConsistency(metrics),
+      strengthsAndWeaknesses: [],
+      keyInsights: [],
+      riskFactors: []
+    };
+
+    // Calculate overall score (0-100)
+    analysis.overallScore = this.calculateOverallScore(analysis);
+
+    // Generate strengths and weaknesses
+    analysis.strengthsAndWeaknesses = this.identifyStrengthsAndWeaknesses(analysis);
+
+    // Generate key insights
+    analysis.keyInsights = this.generateKeyInsights(analysis, metrics);
+
+    // Identify risk factors
+    analysis.riskFactors = this.identifyRiskFactors(analysis, metrics);
+
+    return analysis;
+  }
+
+  /**
+   * Analyze pacing strategy
+   */
+  analyzePace(metrics) {
+    const laps = metrics.laps || [];
+    if (laps.length === 0) {
+      return { score: 0, strategy: 'unknown', insights: [] };
+    }
+
+    const paces = laps.map(lap => lap.pace).filter(p => p > 0);
+    const avgPace = paces.reduce((a, b) => a + b, 0) / paces.length;
+    const paceVariance = this.calculateVariance(paces);
+    const paceSD = Math.sqrt(paceVariance);
+    const coefficientOfVariation = (paceSD / avgPace) * 100;
+
+    // Determine pacing strategy
+    let strategy = 'even';
+    const firstHalf = paces.slice(0, Math.ceil(paces.length / 2));
+    const secondHalf = paces.slice(Math.ceil(paces.length / 2));
+    const firstHalfAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+    const secondHalfAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+
+    if (secondHalfAvg < firstHalfAvg - 0.2) {
+      strategy = 'negative-split'; // Speeding up
+    } else if (secondHalfAvg > firstHalfAvg + 0.2) {
+      strategy = 'positive-split'; // Slowing down
+    }
+
+    // Score based on consistency and strategy
+    let score = 100;
+    if (coefficientOfVariation > 10) score -= 30; // High variance is bad
+    if (coefficientOfVariation > 15) score -= 20;
+    if (strategy === 'positive-split') score -= 25; // Fading is bad
+    if (strategy === 'negative-split') score += 10; // Negative split is good
+
+    const insights = [];
+    if (coefficientOfVariation < 5) {
+      insights.push({
+        type: 'strength',
+        message: 'Excellent pace consistency throughout the run',
+        confidence: 95
+      });
+    } else if (coefficientOfVariation > 12) {
+      insights.push({
+        type: 'weakness',
+        message: 'High pace variability - work on maintaining steady effort',
+        confidence: 90
+      });
+    }
+
+    if (strategy === 'negative-split') {
+      insights.push({
+        type: 'strength',
+        message: 'Negative split strategy shows good race management',
+        confidence: 92
+      });
+    } else if (strategy === 'positive-split') {
+      insights.push({
+        type: 'weakness',
+        message: 'Positive split suggests pacing too fast early - start more conservatively',
+        confidence: 88
+      });
+    }
+
+    return {
+      score: Math.max(0, Math.min(100, score)),
+      avgPace,
+      paceVariance,
+      coefficientOfVariation,
+      strategy,
+      insights
+    };
+  }
+
+  /**
+   * Analyze cadence
+   */
+  analyzeCadence(metrics) {
+    const avgCadence = metrics.avgCadence;
+    const { min, max, optimal } = this.idealRanges.cadence;
+
+    let score = 100;
+    let deviation = 0;
+
+    if (avgCadence < min) {
+      deviation = min - avgCadence;
+      score = Math.max(0, 100 - (deviation * 2));
+    } else if (avgCadence > max) {
+      deviation = avgCadence - max;
+      score = Math.max(0, 100 - (deviation * 1.5));
+    } else {
+      // Within range, score based on proximity to optimal
+      deviation = Math.abs(avgCadence - optimal);
+      score = Math.max(80, 100 - (deviation * 2));
+    }
+
+    const insights = [];
+    if (avgCadence < 165) {
+      insights.push({
+        type: 'weakness',
+        message: `Cadence (${Math.round(avgCadence)} spm) is below optimal. Increase to 170-180 to reduce injury risk and improve efficiency`,
+        confidence: 95,
+        recommendation: 'Practice high-cadence drills and use a metronome during training'
+      });
+    } else if (avgCadence >= 170 && avgCadence <= 180) {
+      insights.push({
+        type: 'strength',
+        message: `Excellent cadence (${Math.round(avgCadence)} spm) - within optimal range for injury prevention`,
+        confidence: 98
+      });
+    } else if (avgCadence > 185) {
+      insights.push({
+        type: 'neutral',
+        message: `Very high cadence (${Math.round(avgCadence)} spm) - ensure you're not overstriding to compensate`,
+        confidence: 85
+      });
+    }
+
+    return {
+      score,
+      avgCadence,
+      deviation,
+      status: this.getCadenceStatus(avgCadence),
+      insights
+    };
+  }
+
+  getCadenceStatus(cadence) {
+    if (cadence < 160) return 'too-low';
+    if (cadence < 170) return 'below-optimal';
+    if (cadence <= 180) return 'optimal';
+    if (cadence <= 190) return 'above-optimal';
+    return 'too-high';
+  }
+
+  /**
+   * Analyze heart rate zones and effort distribution
+   */
+  analyzeHeartRate(metrics, maxHR) {
+    const avgHR = metrics.avgHeartRate;
+    const maxRecordedHR = metrics.maxHeartRate;
+
+    if (!avgHR || !maxHR) {
+      return { score: 0, insights: [], zones: {} };
+    }
+
+    const avgHRPercent = avgHR / maxHR;
+    const maxHRPercent = maxRecordedHR / maxHR;
+
+    // Determine which zone the run was in
+    let primaryZone = null;
+    for (const [zoneName, zone] of Object.entries(this.idealRanges.heartRateZones)) {
+      if (avgHRPercent >= zone.min && avgHRPercent < zone.max) {
+        primaryZone = { ...zone, name: zoneName };
+        break;
+      }
+    }
+
+    // Score based on 5K race effort (should be zone 4-5)
+    let score = 100;
+    const insights = [];
+
+    if (avgHRPercent < 0.80) {
+      score = 70;
+      insights.push({
+        type: 'weakness',
+        message: `Average heart rate (${Math.round(avgHRPercent * 100)}% of max) suggests sub-maximal effort. You have capacity for faster times`,
+        confidence: 87,
+        recommendation: 'Push harder in your next 5K race - aim for 85-92% of max HR'
+      });
+    } else if (avgHRPercent >= 0.85 && avgHRPercent <= 0.93) {
+      score = 100;
+      insights.push({
+        type: 'strength',
+        message: `Excellent effort level (${Math.round(avgHRPercent * 100)}% of max HR) - appropriate for 5K racing`,
+        confidence: 95
+      });
+    } else if (avgHRPercent > 0.95) {
+      score = 85;
+      insights.push({
+        type: 'neutral',
+        message: `Very high heart rate effort (${Math.round(avgHRPercent * 100)}% of max HR) - ensure adequate recovery before next hard effort`,
+        confidence: 90
+      });
+    }
+
+    return {
+      score,
+      avgHR,
+      maxHR: maxRecordedHR,
+      avgHRPercent: Math.round(avgHRPercent * 100),
+      maxHRPercent: Math.round(maxHRPercent * 100),
+      primaryZone,
+      insights
+    };
+  }
+
+  /**
+   * Analyze running form metrics
+   */
+  analyzeRunningForm(metrics) {
+    const { verticalOscillation, groundContactTime, avgStrideLength } = metrics;
+    const insights = [];
+    let score = 100;
+    let hasFormData = false;
+
+    // Vertical oscillation analysis
+    if (verticalOscillation > 0) {
+      hasFormData = true;
+      if (verticalOscillation > 10.0) {
+        score -= 20;
+        insights.push({
+          type: 'weakness',
+          message: `High vertical oscillation (${verticalOscillation.toFixed(1)}cm) - excessive bouncing wastes energy`,
+          confidence: 92,
+          recommendation: 'Focus on running "lighter" with quick foot turnover and less vertical movement'
+        });
+      } else if (verticalOscillation <= 8.0) {
+        insights.push({
+          type: 'strength',
+          message: `Excellent vertical oscillation (${verticalOscillation.toFixed(1)}cm) - efficient running form`,
+          confidence: 94
+        });
+      }
+    }
+
+    // Ground contact time analysis
+    if (groundContactTime > 0) {
+      hasFormData = true;
+      if (groundContactTime > 260) {
+        score -= 15;
+        insights.push({
+          type: 'weakness',
+          message: `Long ground contact time (${groundContactTime}ms) - work on quicker foot strike`,
+          confidence: 88,
+          recommendation: 'Practice plyometric drills and focus on landing midfoot with quick lift-off'
+        });
+      } else if (groundContactTime <= 220) {
+        insights.push({
+          type: 'strength',
+          message: `Excellent ground contact time (${groundContactTime}ms) - efficient force application`,
+          confidence: 91
+        });
+      }
+    }
+
+    // Stride length analysis
+    if (avgStrideLength > 0) {
+      hasFormData = true;
+      if (avgStrideLength < 1.0) {
+        score -= 10;
+        insights.push({
+          type: 'weakness',
+          message: `Short stride length (${avgStrideLength.toFixed(2)}m) - may limit speed potential`,
+          confidence: 80,
+          recommendation: 'Incorporate strength training and hill work to build power'
+        });
+      } else if (avgStrideLength > 1.5) {
+        score -= 10;
+        insights.push({
+          type: 'weakness',
+          message: `Very long stride length (${avgStrideLength.toFixed(2)}m) - may indicate overstriding`,
+          confidence: 82,
+          recommendation: 'Focus on cadence over stride length to reduce injury risk'
+        });
+      }
+    }
+
+    if (!hasFormData) {
+      insights.push({
+        type: 'info',
+        message: 'No advanced form metrics available in this file. Consider using a running dynamics pod or compatible watch',
+        confidence: 100
+      });
+    }
+
+    return {
+      score: hasFormData ? score : null,
+      verticalOscillation,
+      groundContactTime,
+      avgStrideLength,
+      insights
+    };
+  }
+
+  /**
+   * Analyze consistency across laps
+   */
+  analyzeConsistency(metrics) {
+    const laps = metrics.laps || [];
+    if (laps.length < 2) {
+      return { score: null, insights: [] };
+    }
+
+    const paces = laps.map(lap => lap.pace);
+    const heartRates = laps.map(lap => lap.heartRate).filter(hr => hr > 0);
+
+    const paceCV = this.calculateCV(paces);
+    const hrCV = heartRates.length > 0 ? this.calculateCV(heartRates) : 0;
+
+    let score = 100;
+    const insights = [];
+
+    // Pace consistency
+    if (paceCV < 3) {
+      score += 0; // Perfect
+      insights.push({
+        type: 'strength',
+        message: 'Exceptional pace consistency - excellent pacing strategy',
+        confidence: 96
+      });
+    } else if (paceCV > 8) {
+      score -= 30;
+      insights.push({
+        type: 'weakness',
+        message: 'Inconsistent pacing between laps - practice even effort distribution',
+        confidence: 91,
+        recommendation: 'Use a pace alert or run with experienced runners to maintain steady pace'
+      });
+    }
+
+    return {
+      score: Math.max(0, Math.min(100, score)),
+      paceCV,
+      hrCV,
+      insights
+    };
+  }
+
+  /**
+   * Calculate overall performance score
+   */
+  calculateOverallScore(analysis) {
+    const weights = {
+      pace: 0.35,
+      cadence: 0.25,
+      heartRate: 0.20,
+      form: 0.10,
+      consistency: 0.10
+    };
+
+    let totalScore = 0;
+    let totalWeight = 0;
+
+    if (analysis.paceAnalysis.score) {
+      totalScore += analysis.paceAnalysis.score * weights.pace;
+      totalWeight += weights.pace;
+    }
+    if (analysis.cadenceAnalysis.score) {
+      totalScore += analysis.cadenceAnalysis.score * weights.cadence;
+      totalWeight += weights.cadence;
+    }
+    if (analysis.heartRateAnalysis.score) {
+      totalScore += analysis.heartRateAnalysis.score * weights.heartRate;
+      totalWeight += weights.heartRate;
+    }
+    if (analysis.formAnalysis.score) {
+      totalScore += analysis.formAnalysis.score * weights.form;
+      totalWeight += weights.form;
+    }
+    if (analysis.consistencyAnalysis.score) {
+      totalScore += analysis.consistencyAnalysis.score * weights.consistency;
+      totalWeight += weights.consistency;
+    }
+
+    return totalWeight > 0 ? Math.round(totalScore / totalWeight) : 0;
+  }
+
+  /**
+   * Identify strengths and weaknesses
+   */
+  identifyStrengthsAndWeaknesses(analysis) {
+    const items = [];
+
+    const addInsights = (categoryInsights) => {
+      categoryInsights.forEach(insight => {
+        items.push(insight);
+      });
+    };
+
+    addInsights(analysis.paceAnalysis.insights || []);
+    addInsights(analysis.cadenceAnalysis.insights || []);
+    addInsights(analysis.heartRateAnalysis.insights || []);
+    addInsights(analysis.formAnalysis.insights || []);
+    addInsights(analysis.consistencyAnalysis.insights || []);
+
+    return items;
+  }
+
+  /**
+   * Generate key insights summary
+   */
+  generateKeyInsights(analysis, metrics) {
+    const insights = [];
+
+    // Time improvement potential
+    const timeMinutes = Math.floor(metrics.totalTime / 60);
+    const timeSeconds = Math.round(metrics.totalTime % 60);
+    insights.push({
+      type: 'performance',
+      message: `Current 5K time: ${timeMinutes}:${timeSeconds.toString().padStart(2, '0')}`,
+      confidence: 100
+    });
+
+    // Overall performance assessment
+    if (analysis.overallScore >= 85) {
+      insights.push({
+        type: 'summary',
+        message: 'Strong overall performance with good race execution',
+        confidence: 93
+      });
+    } else if (analysis.overallScore < 70) {
+      insights.push({
+        type: 'summary',
+        message: 'Significant room for improvement in multiple areas - focus on fundamentals',
+        confidence: 90
+      });
+    }
+
+    return insights;
+  }
+
+  /**
+   * Identify injury risk factors
+   */
+  identifyRiskFactors(analysis, metrics) {
+    const risks = [];
+
+    if (metrics.avgCadence < 160) {
+      risks.push({
+        factor: 'Low cadence',
+        risk: 'high',
+        message: 'Low cadence increases impact forces and injury risk, particularly to knees and shins',
+        confidence: 94
+      });
+    }
+
+    if (metrics.verticalOscillation > 12.0) {
+      risks.push({
+        factor: 'Excessive vertical movement',
+        risk: 'medium',
+        message: 'High vertical oscillation can lead to overuse injuries',
+        confidence: 87
+      });
+    }
+
+    if (metrics.groundContactTime > 270) {
+      risks.push({
+        factor: 'Long ground contact time',
+        risk: 'medium',
+        message: 'Extended ground contact increases stress on joints',
+        confidence: 83
+      });
+    }
+
+    if (analysis.paceAnalysis.strategy === 'positive-split') {
+      const slowdown = analysis.paceAnalysis.coefficientOfVariation;
+      if (slowdown > 15) {
+        risks.push({
+          factor: 'Severe positive split',
+          risk: 'low',
+          message: 'Starting too fast can lead to training inefficiency and burnout',
+          confidence: 75
+        });
+      }
+    }
+
+    return risks;
+  }
+
+  // Utility functions
+  calculateVariance(values) {
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    return values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
+  }
+
+  calculateCV(values) {
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    const sd = Math.sqrt(this.calculateVariance(values));
+    return (sd / avg) * 100;
+  }
+
+  estimateMaxHeartRate(age) {
+    return age ? 220 - age : 190; // Default to 190 if no age
+  }
+}
+
+export default MetricsAnalyzer;

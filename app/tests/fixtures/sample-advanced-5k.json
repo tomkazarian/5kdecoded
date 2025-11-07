@@ -1,0 +1,84 @@
+{
+  "metadata": {
+    "description": "Advanced runner - competitive 5K",
+    "runnerProfile": "advanced",
+    "expectedPace": "4:30",
+    "expectedFinishTime": "22:30"
+  },
+  "activity": {
+    "sport": "running",
+    "distance": 5000,
+    "duration": 1350,
+    "startTime": "2024-11-01T07:00:00Z",
+    "device": "Garmin Forerunner 965"
+  },
+  "laps": [
+    {
+      "lapNumber": 1,
+      "distance": 1000,
+      "duration": 275,
+      "avgHeartRate": 168,
+      "maxHeartRate": 175,
+      "avgCadence": 185,
+      "avgPace": 275,
+      "elevation": { "gain": 5, "loss": 3 }
+    },
+    {
+      "lapNumber": 2,
+      "distance": 1000,
+      "duration": 270,
+      "avgHeartRate": 172,
+      "maxHeartRate": 178,
+      "avgCadence": 188,
+      "avgPace": 270,
+      "elevation": { "gain": 4, "loss": 4 }
+    },
+    {
+      "lapNumber": 3,
+      "distance": 1000,
+      "duration": 268,
+      "avgHeartRate": 175,
+      "maxHeartRate": 181,
+      "avgCadence": 190,
+      "avgPace": 268,
+      "elevation": { "gain": 3, "loss": 5 }
+    },
+    {
+      "lapNumber": 4,
+      "distance": 1000,
+      "duration": 272,
+      "avgHeartRate": 178,
+      "maxHeartRate": 184,
+      "avgCadence": 187,
+      "avgPace": 272,
+      "elevation": { "gain": 6, "loss": 4 }
+    },
+    {
+      "lapNumber": 5,
+      "distance": 1000,
+      "duration": 265,
+      "avgHeartRate": 182,
+      "maxHeartRate": 189,
+      "avgCadence": 192,
+      "avgPace": 265,
+      "elevation": { "gain": 2, "loss": 3 }
+    }
+  ],
+  "metrics": {
+    "avgHeartRate": 175,
+    "maxHeartRate": 189,
+    "avgCadence": 188,
+    "avgPace": 270,
+    "totalCalories": 385,
+    "avgStrideLength": 1.45,
+    "vo2max": 58,
+    "trainingEffect": 4.2
+  },
+  "records": {
+    "points": [
+      { "timestamp": 0, "distance": 0, "heartRate": 155, "cadence": 180, "speed": 3.7, "altitude": 100 },
+      { "timestamp": 60, "distance": 222, "heartRate": 165, "cadence": 185, "speed": 3.7, "altitude": 101 },
+      { "timestamp": 120, "distance": 444, "heartRate": 170, "cadence": 188, "speed": 3.7, "altitude": 102 }
+    ]
+  }
+}

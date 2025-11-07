@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Analysis Results - Dynastride</title>
+    <link rel="stylesheet" href="results.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>DYNASTRIDE</h1>
+                <p class="tagline">Data-Driven Running Performance</p>
+            </div>
+            <button class="export-btn" onclick="exportPDF()">
+                <span class="icon">📄</span>
+                Export PDF Report
+            </button>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Analyzing your race data...</p>
+        </div>
+
+        <!-- Results Content -->
+        <div id="results-content" style="display: none;">
+            <!-- Race Summary -->
+            <section class="summary-section">
+                <h2>Race Summary</h2>
+                <div class="summary-grid">
+                    <div class="summary-card primary">
+                        <div class="card-icon">🏃</div>
+                        <div class="card-content">
+                            <h3>Race Performance</h3>
+                            <div class="performance-score">
+                                <div class="score-gauge" id="performance-gauge">
+                                    <canvas id="gaugeChart"></canvas>
+                                    <div class="score-value" id="score-value">--</div>
+                                </div>
+                                <div class="score-label" id="score-label">Analyzing...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="card-icon">⏱️</div>
+                        <div class="card-content">
+                            <label>Total Time</label>
+                            <div class="metric-value" id="total-time">--:--</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="card-icon">📏</div>
+                        <div class="card-content">
+                            <label>Distance</label>
+                            <div class="metric-value" id="distance">5.00 km</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="card-icon">⚡</div>
+                        <div class="card-content">
+                            <label>Average Pace</label>
+                            <div class="metric-value" id="avg-pace">--:--</div>
+                            <div class="metric-unit">/km</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Key Metrics -->
+            <section class="metrics-section">
+                <h2>Performance Metrics</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-icon">💓</span>
+                            <span class="metric-title">Heart Rate</span>
+                            <span class="tooltip" data-tooltip="Heart rate zones indicate training intensity">?</span>
+                        </div>
+                        <div class="metric-main">
+                            <span class="metric-big" id="avg-hr">--</span>
+                            <span class="metric-unit">bpm avg</span>
+                        </div>
+                        <div class="metric-sub">
+                            Max: <span id="max-hr">--</span> bpm
+                        </div>
+                        <div class="hr-zones" id="hr-zones">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-icon">👟</span>
+                            <span class="metric-title">Cadence</span>
+                            <span class="tooltip" data-tooltip="Steps per minute - optimal range is 170-180">?</span>
+                        </div>
+                        <div class="metric-main">
+                            <span class="metric-big" id="avg-cadence">--</span>
+                            <span class="metric-unit">spm</span>
+                        </div>
+                        <div class="metric-sub">
+                            Target: 170-180 spm
+                        </div>
+                        <div class="cadence-indicator" id="cadence-indicator">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-icon">⛰️</span>
+                            <span class="metric-title">Elevation</span>
+                            <span class="tooltip" data-tooltip="Total elevation gain and loss during race">?</span>
+                        </div>
+                        <div class="metric-main">
+                            <span class="metric-big" id="elevation-gain">--</span>
+                            <span class="metric-unit">m gain</span>
+                        </div>
+                        <div class="metric-sub">
+                            Loss: <span id="elevation-loss">--</span> m
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-icon">🎯</span>
+                            <span class="metric-title">VO2 Max</span>
+                            <span class="tooltip" data-tooltip="Estimated maximal oxygen uptake">?</span>
+                        </div>
+                        <div class="metric-main">
+                            <span class="metric-big" id="vo2max">--</span>
+                            <span class="metric-unit">ml/kg/min</span>
+                        </div>
+                        <div class="metric-sub" id="vo2max-label">
+                            -- Fitness Level
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Charts -->
+            <section class="charts-section">
+                <h2>Performance Analysis</h2>
+
+                <!-- Pace Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Pace Analysis</h3>
+                        <p class="chart-description">Your pace throughout the race with training zones</p>
+                    </div>
+                    <canvas id="paceChart"></canvas>
+                </div>
+
+                <!-- Heart Rate Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Heart Rate Zones</h3>
+                        <p class="chart-description">Heart rate distribution across training zones</p>
+                    </div>
+                    <canvas id="hrChart"></canvas>
+                </div>
+
+                <!-- Two Column Charts -->
+                <div class="chart-row">
+                    <div class="chart-container half">
+                        <div class="chart-header">
+                            <h3>Cadence</h3>
+                            <p class="chart-description">Steps per minute</p>
+                        </div>
+                        <canvas id="cadenceChart"></canvas>
+                    </div>
+
+                    <div class="chart-container half">
+                        <div class="chart-header">
+                            <h3>Elevation Profile</h3>
+                            <p class="chart-description">Course elevation</p>
+                        </div>
+                        <canvas id="elevationChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Split Analysis -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Split Analysis</h3>
+                        <p class="chart-description">Kilometer split times comparison</p>
+                    </div>
+                    <canvas id="splitsChart"></canvas>
+                </div>
+
+                <!-- Form Metrics -->
+                <div class="form-metrics">
+                    <h3>Running Form Metrics</h3>
+                    <div class="form-grid">
+                        <div class="form-gauge">
+                            <label>Ground Contact Time</label>
+                            <canvas id="gctGauge"></canvas>
+                            <div class="gauge-value" id="gct-value">-- ms</div>
+                            <div class="gauge-range">Optimal: 200-250ms</div>
+                        </div>
+                        <div class="form-gauge">
+                            <label>Vertical Oscillation</label>
+                            <canvas id="voGauge"></canvas>
+                            <div class="gauge-value" id="vo-value">-- cm</div>
+                            <div class="gauge-range">Optimal: 6-10cm</div>
+                        </div>
+                        <div class="form-gauge">
+                            <label>Stride Length</label>
+                            <canvas id="strideGauge"></canvas>
+                            <div class="gauge-value" id="stride-value">-- m</div>
+                            <div class="gauge-range">Optimal: 1.0-1.4m</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analysis Insights -->
+            <section class="insights-section">
+                <h2>Key Insights</h2>
+                <div class="insights-grid" id="insights-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Training Recommendations -->
+            <section class="recommendations-section">
+                <h2>Training Recommendations</h2>
+
+                <div class="recommendation-overview">
+                    <div class="overview-card">
+                        <h3>12-Week Goal</h3>
+                        <div class="goal-time" id="goal-time">--:--</div>
+                        <p class="goal-improvement" id="goal-improvement">-- improvement</p>
+                    </div>
+
+                    <div class="overview-card">
+                        <h3>Training Focus</h3>
+                        <ul class="focus-list" id="focus-list">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="recommendations-list" id="recommendations-list">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div class="weekly-structure">
+                    <h3>Recommended Weekly Structure</h3>
+                    <div class="week-grid" id="week-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Export Options -->
+            <section class="export-section">
+                <h2>Export Your Report</h2>
+                <div class="export-options">
+                    <div class="export-preview">
+                        <div class="preview-image">
+                            <div class="preview-placeholder">
+                                📊<br>
+                                PDF Preview
+                            </div>
+                        </div>
+                    </div>
+                    <div class="export-controls">
+                        <h3>Export Options</h3>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="include-charts" checked>
+                            Include all charts and visualizations
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="include-metrics" checked>
+                            Include detailed metrics
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="include-training" checked>
+                            Include training plan
+                        </label>
+                        <button class="export-btn-large" onclick="exportPDF()">
+                            <span class="icon">📄</span>
+                            Generate PDF Report
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+    <script>
+        // Initialize results page when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Simulate loading delay for demo
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results-content').style.display = 'block';
+
+                // Initialize charts with sample data
+                if (typeof initializeResultsPage === 'function') {
+                    initializeResultsPage();
+                }
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

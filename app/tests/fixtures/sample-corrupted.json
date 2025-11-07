@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "description": "Corrupted data - missing critical fields",
+    "runnerProfile": "unknown",
+    "expectedPace": null
+  },
+  "activity": {
+    "sport": "running",
+    "distance": null,
+    "duration": 1500,
+    "startTime": "2024-11-01T08:00:00Z"
+  },
+  "laps": [
+    {
+      "lapNumber": 1,
+      "duration": 300
+    },
+    {
+      "lapNumber": 2,
+      "avgHeartRate": 165
+    }
+  ],
+  "metrics": {
+    "avgHeartRate": null,
+    "maxHeartRate": 999,
+    "avgCadence": -10
+  }
+}

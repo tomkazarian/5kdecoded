@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered 5K race analysis by USA Track and Field Certified Coach Anthony Mallory. Upload your Garmin data for personalized training insights.">
+    <title>Dynastride - Decode Your 5K Performance with AI | Anthony Mallory</title>
+    <link rel="stylesheet" href="landing.css">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">Decode Your 5K Performance with AI-Powered Analysis</h1>
+                <p class="hero-subtitle">Upload your Garmin race data and get evidence-based training recommendations from a USA Track and Field Certified Coach</p>
+                <a href="#upload" class="cta-button primary">Analyze Your Race Now</a>
+            </div>
+            <div class="hero-image">
+                <div class="coach-card">
+                    <div class="coach-photo-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none">
+                            <circle cx="60" cy="60" r="60" fill="#E8F0F7"/>
+                            <circle cx="60" cy="45" r="20" fill="#4A90E2"/>
+                            <path d="M30 100C30 80 42 70 60 70C78 70 90 80 90 100" fill="#4A90E2"/>
+                        </svg>
+                    </div>
+                    <div class="coach-info">
+                        <h3>Anthony Mallory</h3>
+                        <p class="coach-title">USATF Certified Coach</p>
+                        <p class="coach-credentials">ISSA Personal Trainer<br>10+ Years Experience</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust Indicators -->
+    <section class="trust-indicators">
+        <div class="container">
+            <div class="trust-grid">
+                <div class="trust-item">
+                    <div class="trust-icon">✓</div>
+                    <p>USATF Certified</p>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon">✓</div>
+                    <p>10+ Years Experience</p>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon">✓</div>
+                    <p>Evidence-Based Methods</p>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon">✓</div>
+                    <p>Olympic Coach Trained</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Upload Section -->
+    <section id="upload" class="upload-section">
+        <div class="container">
+            <h2 class="section-title">Upload Your 5K Race File</h2>
+            <p class="section-subtitle">Get instant analysis from your Garmin .FIT, .TCX, or .GPX file</p>
+
+            <div class="upload-container">
+                <div id="dropZone" class="drop-zone">
+                    <div class="drop-zone-content">
+                        <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <h3>Drag your Garmin file here</h3>
+                        <p>or click to browse</p>
+                        <p class="file-types">Supports .FIT, .TCX, .GPX files (max 10MB)</p>
+                    </div>
+                    <input type="file" id="fileInput" accept=".fit,.tcx,.gpx" hidden>
+                </div>
+
+                <div id="uploadProgress" class="upload-progress" style="display: none;">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <p id="progressText" class="progress-text">Uploading... 0%</p>
+                </div>
+
+                <div id="uploadError" class="upload-error" style="display: none;">
+                    <p id="errorMessage"></p>
+                    <button id="retryButton" class="cta-button secondary">Try Again</button>
+                </div>
+
+                <div id="uploadSuccess" class="upload-success" style="display: none;">
+                    <svg class="success-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <h3>File Uploaded Successfully!</h3>
+                    <p>Analyzing your race data...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="container">
+            <h2 class="section-title">How It Works</h2>
+            <div class="steps-grid">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Upload Your File</h3>
+                    <p>Simply drag and drop your Garmin 5K race file (.FIT, .TCX, or .GPX)</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Get AI Analysis</h3>
+                    <p>Our AI analyzes 25+ metrics including pace, heart rate, cadence, and power zones</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Download Your Plan</h3>
+                    <p>Receive personalized training recommendations with confidence scores and realistic goals</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">What You'll Get</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>25+ Metrics Analyzed</h3>
+                    <p>Comprehensive analysis of pace, heart rate, cadence, power zones, and more</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Evidence-Based Recommendations</h3>
+                    <p>Training advice grounded in proven methods from Olympic coaches</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💪</div>
+                    <h3>Personalized Training Plans</h3>
+                    <p>Customized workouts targeting your specific strengths and weaknesses</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🏆</div>
+                    <h3>Realistic Goal Setting</h3>
+                    <p>Achievable targets based on your current fitness level and progression</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <h3>Confidence-Scored Insights</h3>
+                    <p>Know which recommendations have the strongest evidence backing them</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📄</div>
+                    <h3>PDF Export</h3>
+                    <p>Download your complete analysis and training plan to reference anytime</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about">
+        <div class="container">
+            <div class="about-content">
+                <h2 class="section-title">About Anthony Mallory</h2>
+                <div class="about-bio">
+                    <p>Anthony Mallory is a USA Track and Field Certified Coach and ISSA Certified Personal Trainer with over 10 years of experience at premier fitness facilities including Lifetime Fitness and 24-Hour Fitness.</p>
+
+                    <p>A former track and field competitor specializing in middle-distance events (100m to 10,000m), Anthony brings real-world racing experience to his coaching philosophy. Trained under Olympic coach Scott Simmons and the American Distance Project methodology, he specializes in developing athletes across all performance domains: balance, flexibility, endurance, strength, speed, and power.</p>
+
+                    <p>Currently pursuing a sub-2:30 marathon while maintaining elite strength benchmarks, Anthony's mission is to become the #1 resource for the Folsom and Sacramento running community, helping athletes of all levels achieve their goals through evidence-based training.</p>
+
+                    <div class="credentials-list">
+                        <h4>Certifications & Experience:</h4>
+                        <ul>
+                            <li>USA Track and Field Certified Coach</li>
+                            <li>ISSA Certified Personal Trainer</li>
+                            <li>10+ years coaching at Lifetime Fitness & 24-Hour Fitness</li>
+                            <li>Trained under Olympic coach Scott Simmons</li>
+                            <li>American Distance Project methodology</li>
+                            <li>Former competitive middle-distance runner</li>
+                        </ul>
+                    </div>
+
+                    <a href="https://dynastride.com" target="_blank" rel="noopener noreferrer" class="cta-button secondary">Visit Dynastride.com</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <h2>Ready to Decode Your 5K Performance?</h2>
+            <p>Upload your race file now and get personalized training insights in minutes</p>
+            <a href="#upload" class="cta-button primary large">Start Your Analysis</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h3>Dynastride</h3>
+                    <p>Evidence-based training analysis by Anthony Mallory</p>
+                    <p class="location">Folsom, California</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Connect</h4>
+                    <ul>
+                        <li><a href="https://dynastride.com" target="_blank" rel="noopener noreferrer">Dynastride.com</a></li>
+                        <li><a href="mailto:coach@dynastride.com">coach@dynastride.com</a></li>
+                    </ul>
+                </div>
+                <div class="footer-social">
+                    <h4>Follow</h4>
+                    <div class="social-links">
+                        <a href="#" aria-label="Facebook" class="social-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                        </a>
+                        <a href="#" aria-label="Instagram" class="social-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                            </svg>
+                        </a>
+                        <a href="#" aria-label="Twitter" class="social-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Dynastride.com - Anthony Mallory. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- jsPDF library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- html2canvas for chart capture (if needed) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script src="app.js"></script>
+    <script src="pdf-integration.js"></script>
+</body>
+</html>
