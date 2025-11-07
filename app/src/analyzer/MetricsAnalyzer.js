@@ -34,6 +34,19 @@ export class MetricsAnalyzer {
 
     const maxHR = userProfile.maxHeartRate || this.estimateMaxHeartRate(userProfile.age || 35);
 
+    // Calculate elevation from records
+    const elevation = this.calculateElevation(metrics.records);
+    metrics.elevationGain = elevation.gain;
+    metrics.elevationLoss = elevation.loss;
+
+    // Calculate VO2 max
+    const vo2Max = this.calculateVO2Max(
+      metrics.totalDistance,
+      metrics.totalTime,
+      userProfile.age || 35,
+      userProfile.gender || 'male'
+    );
+
     const analysis = {
       overallScore: 0,
       paceAnalysis: this.analyzePace(metrics),
@@ -43,7 +56,10 @@ export class MetricsAnalyzer {
       consistencyAnalysis: this.analyzeConsistency(metrics),
       strengthsAndWeaknesses: [],
       insights: [], // Changed from keyInsights to insights for consistency
-      riskFactors: []
+      riskFactors: [],
+      vo2Max: vo2Max,
+      trainingRecommendations: null,
+      chartCommentary: {}
     };
 
     // Calculate overall score (0-100)
@@ -61,7 +77,19 @@ export class MetricsAnalyzer {
     // Generate race commentary
     analysis.raceCommentary = this.generateRaceCommentary(metrics, analysis);
 
-    console.log(`[Analyzer] Analysis complete - Score: ${analysis.overallScore}, Insights: ${analysis.insights.length}, Strengths/Weaknesses: ${analysis.strengthsAndWeaknesses.length}`);
+    // Generate training recommendations
+    analysis.trainingRecommendations = this.generateTrainingRecommendations(metrics, analysis);
+
+    // Generate chart commentary
+    analysis.chartCommentary = {
+      pace: this.generateChartCommentary('pace', metrics, analysis),
+      heartRate: this.generateChartCommentary('heartRate', metrics, analysis),
+      cadence: this.generateChartCommentary('cadence', metrics, analysis),
+      elevation: this.generateChartCommentary('elevation', metrics, analysis),
+      splits: this.generateChartCommentary('splits', metrics, analysis)
+    };
+
+    console.log(`[Analyzer] Analysis complete - Score: ${analysis.overallScore}, Insights: ${analysis.insights.length}, VO2 Max: ${vo2Max}, Elevation: +${elevation.gain}m/-${elevation.loss}m`);
 
     return analysis;
   }
@@ -887,7 +915,311 @@ export class MetricsAnalyzer {
     return risks;
   }
 
+  /**
+   * Calculate elevation metrics from altitude records
+   */
+  calculateElevation(records) {
+    if (!records || records.length === 0) {
+      return { gain: 0, loss: 0 };
+    }
+
+    let gain = 0;
+    let loss = 0;
+    const smoothingWindow = 5; // Smooth out GPS noise
+
+    // Create smoothed elevation data
+    const smoothedAltitudes = [];
+    for (let i = 0; i < records.length; i++) {
+      const start = Math.max(0, i - Math.floor(smoothingWindow / 2));
+      const end = Math.min(records.length, i + Math.floor(smoothingWindow / 2) + 1);
+      const window = records.slice(start, end);
+      const avg = window.reduce((sum, r) => sum + (r.altitude || 0), 0) / window.length;
+      smoothedAltitudes.push(avg);
+    }
+
+    // Calculate gain/loss from smoothed data
+    for (let i = 1; i < smoothedAltitudes.length; i++) {
+      const diff = smoothedAltitudes[i] - smoothedAltitudes[i - 1];
+      if (diff > 0.5) { // Minimum 0.5m change to filter noise
+        gain += diff;
+      } else if (diff < -0.5) {
+        loss += Math.abs(diff);
+      }
+    }
+
+    return {
+      gain: Math.round(gain),
+      loss: Math.round(loss)
+    };
+  }
+
+  /**
+   * Estimate VO2 max using running performance
+   * Based on Jack Daniels' VDOT formula
+   */
+  calculateVO2Max(distanceKm, timeSeconds, age = 35, gender = 'male') {
+    if (!distanceKm || !timeSeconds) return null;
+
+    // Convert to velocity (meters per minute)
+    const velocity = (distanceKm * 1000) / (timeSeconds / 60);
+
+    // Calculate % VO2 max (based on race duration)
+    const duration = timeSeconds / 60; // minutes
+    let percentVO2Max = 1.0;
+    if (duration > 2.5) {
+      percentVO2Max = 0.8 + (0.1989337 * Math.exp(-0.012778 * duration)) + (0.2989558 * Math.exp(-0.1932605 * duration));
+    }
+
+    // Jack Daniels' VDOT formula
+    const vo2 = -4.60 + 0.182258 * velocity + 0.000104 * Math.pow(velocity, 2);
+    const vdot = vo2 / percentVO2Max;
+
+    // Adjust for age (declines ~0.5% per year after 25)
+    const ageFactor = age > 25 ? 1 - ((age - 25) * 0.005) : 1;
+
+    // Adjust for gender (women typically ~10% lower)
+    const genderFactor = gender === 'female' ? 0.9 : 1;
+
+    const adjustedVO2Max = vdot * ageFactor * genderFactor;
+
+    return Math.round(adjustedVO2Max * 10) / 10;
+  }
+
+  /**
+   * Generate training recommendations based on analysis
+   */
+  generateTrainingRecommendations(metrics, analysis) {
+    const recommendations = {
+      weeklyGoal: null,
+      trainingFocus: [],
+      workoutPlan: [],
+      improvementAreas: []
+    };
+
+    // Calculate goal time (5-15% improvement over 12 weeks)
+    const currentTime = metrics.totalTime;
+    const improvementPotential = this.estimateImprovementPotential(analysis, metrics);
+    const goalTime = currentTime * (1 - improvementPotential / 100);
+
+    recommendations.weeklyGoal = {
+      currentTime: this.formatTime(currentTime),
+      goalTime: this.formatTime(goalTime),
+      improvement: `${improvementPotential}%`,
+      timeframe: '12 weeks'
+    };
+
+    // Identify training focus based on weaknesses
+    if (analysis.cadenceAnalysis?.score < 70) {
+      recommendations.trainingFocus.push('Cadence improvement');
+      recommendations.improvementAreas.push({
+        area: 'Cadence',
+        current: `${Math.round(metrics.avgCadence)} spm`,
+        target: '170-180 spm',
+        priority: 'high'
+      });
+    }
+
+    if (analysis.paceAnalysis?.strategy === 'positive-split') {
+      recommendations.trainingFocus.push('Pace management');
+      recommendations.improvementAreas.push({
+        area: 'Pacing',
+        current: 'Positive split (slowing)',
+        target: 'Negative or even split',
+        priority: 'high'
+      });
+    }
+
+    if (analysis.heartRateAnalysis?.averagePercentage > 92) {
+      recommendations.trainingFocus.push('Aerobic base development');
+      recommendations.improvementAreas.push({
+        area: 'Aerobic Capacity',
+        current: `${analysis.heartRateAnalysis.averagePercentage}% max HR`,
+        target: 'Lower race HR through base building',
+        priority: 'medium'
+      });
+    }
+
+    // Generate weekly workout structure
+    recommendations.workoutPlan = [
+      {
+        day: 'Monday',
+        workout: 'Easy run',
+        duration: '30-40 min',
+        intensity: '60-70% max HR',
+        purpose: 'Recovery and aerobic base'
+      },
+      {
+        day: 'Tuesday',
+        workout: 'Interval training',
+        duration: '6-8 x 400m',
+        intensity: '5K pace',
+        purpose: 'VO2 max development'
+      },
+      {
+        day: 'Wednesday',
+        workout: 'Easy run + drills',
+        duration: '30 min + form drills',
+        intensity: '60-70% max HR',
+        purpose: 'Recovery and technique'
+      },
+      {
+        day: 'Thursday',
+        workout: 'Tempo run',
+        duration: '20 min at tempo',
+        intensity: '80-85% max HR',
+        purpose: 'Lactate threshold improvement'
+      },
+      {
+        day: 'Friday',
+        workout: 'Rest or easy 20 min',
+        duration: '0-20 min',
+        intensity: 'Very easy',
+        purpose: 'Recovery'
+      },
+      {
+        day: 'Saturday',
+        workout: 'Long run',
+        duration: '45-60 min',
+        intensity: '65-75% max HR',
+        purpose: 'Aerobic endurance'
+      },
+      {
+        day: 'Sunday',
+        workout: 'Rest or cross-training',
+        duration: '30 min optional',
+        intensity: 'Low impact',
+        purpose: 'Active recovery'
+      }
+    ];
+
+    // Adjust plan based on current fitness
+    if (analysis.overallScore < 70) {
+      recommendations.trainingFocus.push('Base building');
+      recommendations.workoutPlan[1].workout = 'Easy run';
+      recommendations.workoutPlan[1].duration = '30-35 min';
+      recommendations.workoutPlan[1].intensity = '65-75% max HR';
+      recommendations.workoutPlan[1].purpose = 'Build aerobic foundation first';
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Generate commentary for specific charts
+   */
+  generateChartCommentary(chartType, metrics, analysis) {
+    switch (chartType) {
+      case 'pace':
+        return this.generatePaceChartCommentary(metrics, analysis);
+      case 'heartRate':
+        return this.generateHRChartCommentary(metrics, analysis);
+      case 'cadence':
+        return this.generateCadenceChartCommentary(metrics, analysis);
+      case 'elevation':
+        return this.generateElevationChartCommentary(metrics);
+      case 'splits':
+        return this.generateSplitsChartCommentary(metrics, analysis);
+      default:
+        return null;
+    }
+  }
+
+  generatePaceChartCommentary(metrics, analysis) {
+    const paceStrategy = analysis.paceAnalysis?.strategy || 'unknown';
+    let commentary = '';
+
+    if (paceStrategy === 'negative-split') {
+      commentary = 'Strong pacing strategy: You ran a negative split, finishing faster than you started. This demonstrates good race awareness and energy management, often resulting in better overall performance and race experience.';
+    } else if (paceStrategy === 'positive-split') {
+      commentary = 'Your pace shows a positive split pattern, with noticeable slowing in the later stages. This is common but suggests starting slightly too fast. Try beginning 5-10 seconds per mile slower to conserve energy for a stronger finish.';
+    } else {
+      commentary = 'Your pacing was relatively consistent throughout the race. Even pacing is effective for 5K distance and shows good race execution. Small improvements in pacing precision could unlock further time gains.';
+    }
+
+    return commentary;
+  }
+
+  generateHRChartCommentary(metrics, analysis) {
+    const avgHR = metrics.avgHeartRate || 0;
+    const maxHR = metrics.maxHeartRate || 0;
+    const percentage = maxHR > 0 ? Math.round((avgHR / maxHR) * 100) : 0;
+
+    if (percentage >= 92) {
+      return `Your average heart rate of ${avgHR} bpm (${percentage}% of max) indicates maximum effort was sustained throughout the race. While this shows excellent mental toughness, building your aerobic base through more easy-paced runs could allow you to maintain similar speeds at lower heart rates.`;
+    } else if (percentage >= 85) {
+      return `Your heart rate averaged ${avgHR} bpm (${percentage}% of max), which is appropriate for a 5K race effort. This suggests good cardiovascular fitness and efficient pacing. Continue training in this zone for race-specific preparation.`;
+    } else {
+      return `Your average heart rate of ${avgHR} bpm (${percentage}% of max) suggests there may have been room to push harder. For 5K races, most runners should be at 85-95% of max HR. Consider doing more race-pace workouts to become comfortable with higher intensities.`;
+    }
+  }
+
+  generateCadenceChartCommentary(metrics, analysis) {
+    const avgCadence = Math.round(metrics.avgCadence || 0);
+
+    if (avgCadence >= 170 && avgCadence <= 180) {
+      return `Your cadence of ${avgCadence} spm falls within the optimal range of 170-180 steps per minute. This cadence range is associated with improved running efficiency and reduced injury risk. Maintain this rhythm in training and racing.`;
+    } else if (avgCadence < 165) {
+      return `Your cadence of ${avgCadence} spm is below the optimal range. Lower cadence typically means longer ground contact time and higher impact forces. Focus on increasing your step rate through metronome drills and form work. Aim for 170-180 spm.`;
+    } else {
+      return `Your cadence of ${avgCadence} spm is slightly above the typical optimal range. While this can work for some runners, ensure you're not over-striding or bouncing excessively. Focus on quick, light foot strikes with minimal vertical movement.`;
+    }
+  }
+
+  generateElevationChartCommentary(metrics) {
+    const elevationGain = metrics.elevationGain || 0;
+
+    if (elevationGain > 50) {
+      return `This course included significant elevation change with ${elevationGain}m of climbing. Hill running requires more effort and typically results in slower overall paces. Factor in terrain when comparing performances across different courses.`;
+    } else if (elevationGain > 20) {
+      return `The course had moderate elevation with ${elevationGain}m of gain. While not a major factor, hills do affect pacing and effort. Use flat or downhill sections strategically to recover and maintain goal pace.`;
+    } else {
+      return `This was a relatively flat course with only ${elevationGain}m of elevation gain. Flat courses are ideal for fast times and allow for more consistent pacing throughout the race. Use these conditions to target personal bests.`;
+    }
+  }
+
+  generateSplitsChartCommentary(metrics, analysis) {
+    const laps = metrics.laps || [];
+    if (laps.length < 2) {
+      return 'Split data shows your kilometer-by-kilometer pacing throughout the race.';
+    }
+
+    const firstLapPace = laps[0].pace;
+    const lastLapPace = laps[laps.length - 1].pace;
+    const paceDiff = lastLapPace - firstLapPace;
+
+    if (paceDiff < -0.15) {
+      return `Your splits show a ${Math.abs(paceDiff * 60).toFixed(0)}-second per mile improvement from start to finish. This negative split strategy is highly effective and demonstrates excellent race execution and fitness. You successfully managed your energy and finished strong.`;
+    } else if (paceDiff > 0.20) {
+      return `Your splits indicate significant slowing, with the final mile about ${(paceDiff * 60).toFixed(0)} seconds slower than the opening mile. This suggests the initial pace was too aggressive. Practice race-pace efforts in training to better gauge sustainable speeds.`;
+    } else {
+      return 'Your splits demonstrate relatively even pacing throughout the race. This is an effective strategy for 5K distance and indicates good pace judgment and race experience.';
+    }
+  }
+
   // Utility functions
+  kmToMiles(km) {
+    return km * 0.621371;
+  }
+
+  milesToKm(miles) {
+    return miles * 1.609344;
+  }
+
+  formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.round(seconds % 60);
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  }
+
+  formatPacePerMile(pacePerKm) {
+    if (!pacePerKm || pacePerKm === 0) return '0:00';
+    // Convert min/km to min/mile
+    const pacePerMile = pacePerKm * 1.609344;
+    const mins = Math.floor(pacePerMile);
+    const secs = Math.round((pacePerMile % 1) * 60);
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  }
+
   calculateVariance(values) {
     const avg = values.reduce((a, b) => a + b, 0) / values.length;
     return values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
