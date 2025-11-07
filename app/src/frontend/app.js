@@ -584,15 +584,20 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        const labels = metrics.laps.map((_, idx) => `Km ${idx + 1}`);
-        const paceData = metrics.laps.map(lap => lap.pace);
+        // Convert km laps to mile markers (approximate)
+        const labels = metrics.laps.map((_, idx) => {
+            const miles = (idx + 1) * 0.621371;
+            return `${miles.toFixed(1)} mi`;
+        });
+        // Convert pace from min/km to min/mile
+        const paceData = metrics.laps.map(lap => lap.pace * 1.609344);
 
         new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Pace (min/km)',
+                    label: 'Pace (min/mile)',
                     data: paceData,
                     borderColor: '#667eea',
                     backgroundColor: 'rgba(102, 126, 234, 0.1)',
@@ -632,7 +637,11 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        const labels = metrics.laps.map((_, idx) => `Km ${idx + 1}`);
+        // Convert km laps to mile markers
+        const labels = metrics.laps.map((_, idx) => {
+            const miles = (idx + 1) * 0.621371;
+            return `${miles.toFixed(1)} mi`;
+        });
         const hrData = metrics.laps.map(lap => lap.avgHeartRate);
 
         new Chart(ctx, {
@@ -672,7 +681,11 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        const labels = metrics.laps.map((_, idx) => `${idx + 1}`);
+        // Convert km laps to mile markers
+        const labels = metrics.laps.map((_, idx) => {
+            const miles = (idx + 1) * 0.621371;
+            return `${miles.toFixed(1)} mi`;
+        });
         const cadenceData = metrics.laps.map(lap => lap.avgCadence);
 
         new Chart(ctx, {
@@ -734,7 +747,11 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        const labels = metrics.laps.map((_, idx) => `${idx + 1}`);
+        // Convert km laps to mile markers
+        const labels = metrics.laps.map((_, idx) => {
+            const miles = (idx + 1) * 0.621371;
+            return `${miles.toFixed(1)} mi`;
+        });
         const elevationData = metrics.laps.map(lap => lap.elevation || 0);
 
         new Chart(ctx, {
@@ -773,7 +790,11 @@
         if (!canvas || !window.Chart || !metrics.laps) return;
 
         const ctx = canvas.getContext('2d');
-        const labels = metrics.laps.map((_, idx) => `Km ${idx + 1}`);
+        // Convert km laps to mile markers
+        const labels = metrics.laps.map((_, idx) => {
+            const miles = (idx + 1) * 0.621371;
+            return `Mile ${miles.toFixed(1)}`;
+        });
         const splitTimes = metrics.laps.map(lap => lap.totalTime / 60); // Convert to minutes
 
         new Chart(ctx, {
