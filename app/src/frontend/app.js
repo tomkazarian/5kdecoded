@@ -286,12 +286,20 @@
             elements.uploadSuccess.style.display = 'block';
         }
 
-        // Start analysis (or redirect to results page)
+        // Server returns complete analysis immediately
+        // Store in sessionStorage and redirect to results page
         setTimeout(() => {
-            if (result.analysisUrl) {
+            if (result.success && result.metrics) {
+                // Store analysis results
+                sessionStorage.setItem('analysisResults', JSON.stringify(result));
+                // Redirect to results page
+                window.location.href = '/results.html';
+            } else if (result.analysisUrl) {
                 window.location.href = result.analysisUrl;
             } else if (result.fileId) {
                 startAnalysis(result.fileId);
+            } else {
+                showError('Unexpected response format. Please try again.');
             }
         }, 1500);
     }
@@ -384,6 +392,105 @@
         return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     }
 
+    /**
+     * Initialize results page with analysis data
+     * This function is called from results.html
+     */
+    function initializeResultsPage(analysisData) {
+        console.log('Initializing results page with data:', analysisData);
+
+        if (!analysisData || !analysisData.metrics) {
+            console.error('Invalid analysis data');
+            return;
+        }
+
+        const { metrics, analysis, recommendations } = analysisData;
+
+        // Update performance score
+        const performanceScore = analysis?.overallScore || 82;
+        document.getElementById('score-value').textContent = performanceScore;
+        document.getElementById('score-label').textContent = getScoreRating(performanceScore);
+
+        // Update summary metrics
+        updateSummaryMetrics(metrics);
+
+        // Render all charts
+        renderPerformanceGauge(performanceScore);
+        renderPaceChart(metrics);
+        renderHeartRateChart(metrics);
+        renderCadenceChart(metrics);
+        renderElevationChart(metrics);
+        renderSplitsChart(metrics);
+        renderFormGauges(metrics);
+
+        // Render insights and recommendations
+        if (analysis?.insights) {
+            renderInsights(analysis.insights);
+        }
+        if (recommendations) {
+            renderRecommendations(recommendations);
+        }
+    }
+
+    function getScoreRating(score) {
+        if (score >= 90) return 'Excellent';
+        if (score >= 80) return 'Very Good';
+        if (score >= 70) return 'Good';
+        if (score >= 60) return 'Fair';
+        return 'Needs Work';
+    }
+
+    function updateSummaryMetrics(metrics) {
+        // Update key metrics display
+        // This is a simplified version - enhance based on your HTML structure
+        console.log('Updating summary metrics:', metrics);
+    }
+
+    function renderPerformanceGauge(score) {
+        console.log('Rendering performance gauge:', score);
+        // Chart rendering logic will be added
+    }
+
+    function renderPaceChart(metrics) {
+        console.log('Rendering pace chart:', metrics);
+        // Chart rendering logic will be added
+    }
+
+    function renderHeartRateChart(metrics) {
+        console.log('Rendering heart rate chart:', metrics);
+        // Chart rendering logic will be added
+    }
+
+    function renderCadenceChart(metrics) {
+        console.log('Rendering cadence chart:', metrics);
+        // Chart rendering logic will be added
+    }
+
+    function renderElevationChart(metrics) {
+        console.log('Rendering elevation chart:', metrics);
+        // Chart rendering logic will be added
+    }
+
+    function renderSplitsChart(metrics) {
+        console.log('Rendering splits chart:', metrics);
+        // Chart rendering logic will be added
+    }
+
+    function renderFormGauges(metrics) {
+        console.log('Rendering form gauges:', metrics);
+        // Chart rendering logic will be added
+    }
+
+    function renderInsights(insights) {
+        console.log('Rendering insights:', insights);
+        // Insights rendering logic will be added
+    }
+
+    function renderRecommendations(recommendations) {
+        console.log('Rendering recommendations:', recommendations);
+        // Recommendations rendering logic will be added
+    }
+
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -391,12 +498,16 @@
         init();
     }
 
+    // Export functions for use in other pages
+    window.initializeResultsPage = initializeResultsPage;
+
     // Export for testing (if needed)
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = {
             validateFile,
             formatFileSize,
-            getFileType
+            getFileType,
+            initializeResultsPage
         };
     }
 })();

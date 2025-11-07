@@ -303,17 +303,41 @@
     <script>
         // Initialize results page when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
-            // Simulate loading delay for demo
-            setTimeout(() => {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('results-content').style.display = 'block';
+            // Try to load analysis results from sessionStorage
+            const analysisData = sessionStorage.getItem('analysisResults');
 
-                // Initialize charts with sample data
-                if (typeof initializeResultsPage === 'function') {
-                    initializeResultsPage();
+            if (analysisData) {
+                try {
+                    const results = JSON.parse(analysisData);
+                    console.log('Loaded analysis results:', results);
+
+                    // Show loading briefly then display results
+                    setTimeout(() => {
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('results-content').style.display = 'block';
+
+                        // Initialize charts with real data
+                        if (typeof initializeResultsPage === 'function') {
+                            initializeResultsPage(results);
+                        }
+                    }, 1000);
+                } catch (error) {
+                    console.error('Failed to parse analysis results:', error);
+                    showErrorAndRedirect();
                 }
-            }, 1500);
+            } else {
+                // No data found, redirect back to upload
+                console.warn('No analysis data found in sessionStorage');
+                showErrorAndRedirect();
+            }
         });
+
+        function showErrorAndRedirect() {
+            document.getElementById('loading').innerHTML = '<p>No race data found. Redirecting to upload page...</p>';
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        }
     </script>
 </body>
 </html>
