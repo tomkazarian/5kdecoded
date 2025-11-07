@@ -28,7 +28,11 @@ export class MetricsAnalyzer {
    * @returns {Object} Analysis results with insights and scores
    */
   analyze(metrics, userProfile = {}) {
-    const maxHR = userProfile.maxHeartRate || this.estimateMaxHeartRate(userProfile.age);
+    console.log('[Analyzer] Starting analysis...');
+    console.log(`[Analyzer] Input metrics - Distance: ${metrics.totalDistance?.toFixed(2)} km, Time: ${Math.floor((metrics.totalTime || 0) / 60)}:${String(Math.floor((metrics.totalTime || 0) % 60)).padStart(2, '0')}`);
+    console.log(`[Analyzer] HR: ${metrics.avgHeartRate || 0}, Cadence: ${metrics.avgCadence || 0}, Laps: ${metrics.laps?.length || 0}`);
+
+    const maxHR = userProfile.maxHeartRate || this.estimateMaxHeartRate(userProfile.age || 35);
 
     const analysis = {
       overallScore: 0,
@@ -38,7 +42,7 @@ export class MetricsAnalyzer {
       formAnalysis: this.analyzeRunningForm(metrics),
       consistencyAnalysis: this.analyzeConsistency(metrics),
       strengthsAndWeaknesses: [],
-      keyInsights: [],
+      insights: [], // Changed from keyInsights to insights for consistency
       riskFactors: []
     };
 
@@ -48,11 +52,13 @@ export class MetricsAnalyzer {
     // Generate strengths and weaknesses
     analysis.strengthsAndWeaknesses = this.identifyStrengthsAndWeaknesses(analysis);
 
-    // Generate key insights
-    analysis.keyInsights = this.generateKeyInsights(analysis, metrics);
+    // Generate key insights - always generate at least 3 insights
+    analysis.insights = this.generateKeyInsights(analysis, metrics);
 
     // Identify risk factors
     analysis.riskFactors = this.identifyRiskFactors(analysis, metrics);
+
+    console.log(`[Analyzer] Analysis complete - Score: ${analysis.overallScore}, Insights: ${analysis.insights.length}, Strengths/Weaknesses: ${analysis.strengthsAndWeaknesses.length}`);
 
     return analysis;
   }
@@ -447,36 +453,216 @@ export class MetricsAnalyzer {
   }
 
   /**
-   * Generate key insights summary
+   * Generate comprehensive key insights summary
    */
   generateKeyInsights(analysis, metrics) {
     const insights = [];
+    const timeMinutes = Math.floor((metrics.totalTime || 0) / 60);
+    const timeSeconds = Math.round((metrics.totalTime || 0) % 60);
+    const avgPaceMin = Math.floor(metrics.avgPace || 0);
+    const avgPaceSec = Math.round(((metrics.avgPace || 0) % 1) * 60);
 
-    // Time improvement potential
-    const timeMinutes = Math.floor(metrics.totalTime / 60);
-    const timeSeconds = Math.round(metrics.totalTime % 60);
+    // Always include: Current performance
     insights.push({
       type: 'performance',
-      message: `Current 5K time: ${timeMinutes}:${timeSeconds.toString().padStart(2, '0')}`,
+      message: `Completed 5K in ${timeMinutes}:${timeSeconds.toString().padStart(2, '0')} at ${avgPaceMin}:${avgPaceSec.toString().padStart(2, '0')}/km average pace`,
       confidence: 100
     });
 
     // Overall performance assessment
     if (analysis.overallScore >= 85) {
       insights.push({
-        type: 'summary',
-        message: 'Strong overall performance with good race execution',
-        confidence: 93
+        type: 'strength',
+        message: 'Excellent race execution with strong overall performance metrics (85+ score)',
+        confidence: 95
       });
-    } else if (analysis.overallScore < 70) {
+    } else if (analysis.overallScore >= 70) {
       insights.push({
         type: 'summary',
-        message: 'Significant room for improvement in multiple areas - focus on fundamentals',
+        message: 'Good performance with room for targeted improvements in specific areas',
         confidence: 90
+      });
+    } else if (analysis.overallScore >= 50) {
+      insights.push({
+        type: 'summary',
+        message: 'Moderate performance - focus on consistency and proper pacing for next race',
+        confidence: 88
+      });
+    } else {
+      insights.push({
+        type: 'opportunity',
+        message: 'Significant improvement potential across multiple areas - structured training will yield results',
+        confidence: 92
       });
     }
 
+    // Pace analysis insights
+    if (metrics.laps && metrics.laps.length > 0) {
+      const paces = metrics.laps.map(l => l.pace).filter(p => p > 0);
+      if (paces.length > 0) {
+        const firstKm = paces[0];
+        const lastKm = paces[paces.length - 1];
+        const paceMin = Math.min(...paces);
+        const paceMax = Math.max(...paces);
+        const fastestMin = Math.floor(paceMin);
+        const fastestSec = Math.round((paceMin % 1) * 60);
+        const slowestMin = Math.floor(paceMax);
+        const slowestSec = Math.round((paceMax % 1) * 60);
+
+        if (lastKm < firstKm - 0.15) {
+          insights.push({
+            type: 'strength',
+            message: `Strong negative split - finished faster than you started (${Math.floor(lastKm)}:${String(Math.floor((lastKm % 1) * 60)).padStart(2, '0')}/km final pace)`,
+            confidence: 94,
+            recommendation: 'Excellent pacing strategy - maintain this approach in future races'
+          });
+        } else if (lastKm > firstKm + 0.2) {
+          insights.push({
+            type: 'weakness',
+            message: `Positive split detected - slowed significantly in later kilometers (started ${Math.floor(firstKm)}:${String(Math.floor((firstKm % 1) * 60)).padStart(2, '0')}, finished ${Math.floor(lastKm)}:${String(Math.floor((lastKm % 1) * 60)).padStart(2, '0')})`,
+            confidence: 93,
+            recommendation: 'Start more conservatively - aim for even splits or slight negative split'
+          });
+        } else {
+          insights.push({
+            type: 'strength',
+            message: `Even pacing strategy - consistent pace throughout race (${fastestMin}:${fastestSec.toString().padStart(2, '0')} to ${slowestMin}:${slowestSec.toString().padStart(2, '0')}/km range)`,
+            confidence: 91
+          });
+        }
+      }
+    }
+
+    // Heart rate insights (if available)
+    if (metrics.avgHeartRate > 0) {
+      const maxHR = metrics.maxHeartRate || metrics.avgHeartRate * 1.1;
+      const hrPercentage = ((metrics.avgHeartRate / maxHR) * 100).toFixed(0);
+
+      if (hrPercentage >= 90) {
+        insights.push({
+          type: 'warning',
+          message: `Very high average heart rate (${Math.round(metrics.avgHeartRate)} bpm, ${hrPercentage}% of max) - ensure adequate recovery`,
+          confidence: 89,
+          recommendation: 'Incorporate more aerobic base training at 60-75% max HR'
+        });
+      } else if (hrPercentage >= 80) {
+        insights.push({
+          type: 'performance',
+          message: `Race effort heart rate appropriate for 5K (${Math.round(metrics.avgHeartRate)} bpm average, ${hrPercentage}% of max)`,
+          confidence: 92
+        });
+      } else {
+        insights.push({
+          type: 'opportunity',
+          message: `Moderate heart rate (${Math.round(metrics.avgHeartRate)} bpm, ${hrPercentage}% max) suggests room to push harder`,
+          confidence: 86,
+          recommendation: 'Consider increasing effort in next race - 5K should be 85-95% max HR'
+        });
+      }
+    } else {
+      insights.push({
+        type: 'info',
+        message: 'No heart rate data available - consider using a heart rate monitor for better training guidance',
+        confidence: 100,
+        recommendation: 'Heart rate training zones help optimize training intensity and prevent overtraining'
+      });
+    }
+
+    // Cadence insights (if available)
+    if (metrics.avgCadence > 0) {
+      if (metrics.avgCadence >= 170 && metrics.avgCadence <= 185) {
+        insights.push({
+          type: 'strength',
+          message: `Optimal cadence (${Math.round(metrics.avgCadence)} spm) - within ideal range for efficient running`,
+          confidence: 96,
+          recommendation: 'Maintain current cadence - research shows 170-180 spm reduces injury risk'
+        });
+      } else if (metrics.avgCadence < 160) {
+        insights.push({
+          type: 'weakness',
+          message: `Low cadence (${Math.round(metrics.avgCadence)} spm) - increases impact forces and injury risk`,
+          confidence: 94,
+          recommendation: 'Increase step rate to 170-180 spm with shorter, quicker steps'
+        });
+      } else if (metrics.avgCadence > 190) {
+        insights.push({
+          type: 'observation',
+          message: `High cadence (${Math.round(metrics.avgCadence)} spm) - ensure stride isn't too short`,
+          confidence: 85,
+          recommendation: 'Balance cadence with adequate stride length for efficiency'
+        });
+      } else {
+        insights.push({
+          type: 'opportunity',
+          message: `Cadence (${Math.round(metrics.avgCadence)} spm) close to optimal - minor adjustment to 175 spm could help`,
+          confidence: 88
+        });
+      }
+    } else {
+      insights.push({
+        type: 'info',
+        message: 'No cadence data available - optimal running cadence is 170-180 steps per minute',
+        confidence: 100,
+        recommendation: 'Use a metronome app during training to develop optimal cadence'
+      });
+    }
+
+    // Improvement potential
+    const improvementPotential = this.estimateImprovementPotential(analysis, metrics);
+    if (improvementPotential > 0) {
+      const potentialTimeReduction = Math.round((metrics.totalTime * improvementPotential) / 100);
+      const potentialMinutes = Math.floor(potentialTimeReduction / 60);
+      const potentialSeconds = potentialTimeReduction % 60;
+      const newTime = metrics.totalTime - potentialTimeReduction;
+      const newMinutes = Math.floor(newTime / 60);
+      const newSeconds = Math.round(newTime % 60);
+
+      insights.push({
+        type: 'opportunity',
+        message: `Estimated ${improvementPotential}% improvement potential over 12 weeks (${potentialMinutes}:${potentialSeconds.toString().padStart(2, '0')} faster → ${newMinutes}:${newSeconds.toString().padStart(2, '0')} target time)`,
+        confidence: 82,
+        recommendation: 'Follow structured training plan focusing on your key weaknesses'
+      });
+    }
+
+    // Always ensure we have at least 5 insights
+    if (insights.length < 5) {
+      insights.push({
+        type: 'info',
+        message: 'Upload more race files to track progress and identify trends over time',
+        confidence: 100,
+        recommendation: 'Compare multiple races to see improvements in pacing, heart rate efficiency, and overall performance'
+      });
+    }
+
+    console.log(`[Analyzer] Generated ${insights.length} insights`);
     return insights;
+  }
+
+  /**
+   * Estimate improvement potential based on analysis
+   */
+  estimateImprovementPotential(analysis, metrics) {
+    let potential = 0;
+
+    // Based on overall score
+    if (analysis.overallScore < 60) potential += 20; // Lots of room
+    else if (analysis.overallScore < 75) potential += 12;
+    else if (analysis.overallScore < 85) potential += 8;
+    else potential += 5; // Already performing well
+
+    // Cadence opportunity
+    if (metrics.avgCadence > 0 && (metrics.avgCadence < 165 || metrics.avgCadence > 185)) {
+      potential += 3;
+    }
+
+    // Pacing opportunity
+    if (analysis.paceAnalysis?.strategy === 'positive-split') {
+      potential += 4;
+    }
+
+    // Cap realistic improvement
+    return Math.min(potential, 25); // Max 25% improvement over 12 weeks
   }
 
   /**
