@@ -6,7 +6,8 @@ import FitParserLib from 'fit-file-parser';
 
 export class FitFileParser {
   constructor() {
-    const FitParser = FitParserLib.default || FitParserLib;
+    // Handle nested default exports from fit-file-parser
+    const FitParser = FitParserLib.default?.default || FitParserLib.default || FitParserLib;
     this.parser = new FitParser({ force: true, speedUnit: 'km/h', lengthUnit: 'km' });
   }
 
