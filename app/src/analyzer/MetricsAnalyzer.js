@@ -58,9 +58,183 @@ export class MetricsAnalyzer {
     // Identify risk factors
     analysis.riskFactors = this.identifyRiskFactors(analysis, metrics);
 
+    // Generate race commentary
+    analysis.raceCommentary = this.generateRaceCommentary(metrics, analysis);
+
     console.log(`[Analyzer] Analysis complete - Score: ${analysis.overallScore}, Insights: ${analysis.insights.length}, Strengths/Weaknesses: ${analysis.strengthsAndWeaknesses.length}`);
 
     return analysis;
+  }
+
+  /**
+   * Generate 3-4 paragraph race commentary analyzing performance mile by mile
+   */
+  generateRaceCommentary(metrics, analysis) {
+    const laps = metrics.laps || [];
+    if (laps.length === 0) {
+      return null;
+    }
+
+    const commentary = [];
+    const totalTime = metrics.totalTime || 0;
+    const totalDistance = metrics.totalDistance || 0;
+    const avgPace = metrics.avgPace || 0;
+
+    // Opening paragraph - race overview
+    const timeMin = Math.floor(totalTime / 60);
+    const timeSec = Math.round(totalTime % 60);
+    const paceMin = Math.floor(avgPace);
+    const paceSec = Math.round((avgPace % 1) * 60);
+
+    let opening = `You completed this ${totalDistance.toFixed(2)}km race in ${timeMin}:${String(timeSec).padStart(2, '0')} at an average pace of ${paceMin}:${String(paceSec).padStart(2, '0')}/km. `;
+
+    if (analysis.overallScore >= 85) {
+      opening += `This was a strong performance with excellent execution across all metrics. `;
+    } else if (analysis.overallScore >= 70) {
+      opening += `Overall, this was a solid performance with some areas showing particular strength. `;
+    } else {
+      opening += `This race provides clear insights into areas for improvement. `;
+    }
+
+    // Add pacing strategy observation
+    const firstLap = laps[0];
+    const lastLap = laps[laps.length - 1];
+    if (firstLap && lastLap && firstLap.pace && lastLap.pace) {
+      if (lastLap.pace < firstLap.pace - 0.15) {
+        opening += `You demonstrated smart pacing with a negative split, finishing stronger than you started.`;
+      } else if (lastLap.pace > firstLap.pace + 0.2) {
+        opening += `The positive split indicates you may have started too aggressively, which led to slowing in later kilometers.`;
+      } else {
+        opening += `Your pacing was notably consistent throughout the race.`;
+      }
+    }
+
+    commentary.push(opening);
+
+    // Analyze first third of race (early kilometers)
+    const earlyLaps = laps.slice(0, Math.ceil(laps.length / 3));
+    if (earlyLaps.length > 0) {
+      const earlyAvgPace = earlyLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / earlyLaps.length;
+      const earlyAvgHR = earlyLaps.reduce((sum, lap) => sum + (lap.avgHeartRate || lap.heartRate || 0), 0) / earlyLaps.length;
+      const earlyPaceMin = Math.floor(earlyAvgPace);
+      const earlyPaceSec = Math.round((earlyAvgPace % 1) * 60);
+
+      let earlyPara = `In the opening kilometers, you averaged ${earlyPaceMin}:${String(earlyPaceSec).padStart(2, '0')}/km`;
+
+      if (earlyAvgHR > 0) {
+        earlyPara += ` with an average heart rate of ${Math.round(earlyAvgHR)} bpm`;
+      }
+      earlyPara += `. `;
+
+      // Compare to overall pace
+      if (earlyAvgPace < avgPace - 0.15) {
+        earlyPara += `This was notably faster than your overall average, suggesting an aggressive start. While this can work for experienced runners, it may have contributed to fatigue later. `;
+      } else if (earlyAvgPace > avgPace + 0.1) {
+        earlyPara += `This conservative start allowed you to build into the race, which is a solid strategy for maintaining energy. `;
+      } else {
+        earlyPara += `This matched your overall pace well, indicating good race awareness from the start. `;
+      }
+
+      // Add cadence observation if available
+      const earlyAvgCadence = earlyLaps.reduce((sum, lap) => sum + (lap.avgCadence || lap.cadence || 0), 0) / earlyLaps.length;
+      if (earlyAvgCadence > 0) {
+        if (earlyAvgCadence >= 170 && earlyAvgCadence <= 180) {
+          earlyPara += `Your cadence in this section averaged ${Math.round(earlyAvgCadence)} spm, which is in the optimal range.`;
+        } else if (earlyAvgCadence < 165) {
+          earlyPara += `Your cadence averaged ${Math.round(earlyAvgCadence)} spm in this section, which is below the optimal 170-180 spm range. Increasing cadence could improve efficiency and reduce injury risk.`;
+        }
+      }
+
+      commentary.push(earlyPara);
+    }
+
+    // Analyze middle section
+    const midStart = Math.ceil(laps.length / 3);
+    const midEnd = Math.ceil((laps.length * 2) / 3);
+    const midLaps = laps.slice(midStart, midEnd);
+
+    if (midLaps.length > 0) {
+      const midAvgPace = midLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / midLaps.length;
+      const midAvgHR = midLaps.reduce((sum, lap) => sum + (lap.avgHeartRate || lap.heartRate || 0), 0) / midLaps.length;
+      const midPaceMin = Math.floor(midAvgPace);
+      const midPaceSec = Math.round((midAvgPace % 1) * 60);
+
+      let midPara = `Through the middle kilometers, your pace shifted to ${midPaceMin}:${String(midPaceSec).padStart(2, '0')}/km`;
+
+      if (midAvgHR > 0 && earlyLaps.length > 0) {
+        const earlyAvgHR = earlyLaps.reduce((sum, lap) => sum + (lap.avgHeartRate || lap.heartRate || 0), 0) / earlyLaps.length;
+        const hrChange = midAvgHR - earlyAvgHR;
+
+        if (Math.abs(hrChange) < 5) {
+          midPara += `. Heart rate remained stable at ${Math.round(midAvgHR)} bpm, showing good cardiovascular control. `;
+        } else if (hrChange > 5) {
+          midPara += `. Heart rate climbed to ${Math.round(midAvgHR)} bpm (+${Math.round(hrChange)}), which is expected as the race progressed and effort accumulated. `;
+        }
+      } else {
+        midPara += `. `;
+      }
+
+      // Compare mid to early pace
+      if (earlyLaps.length > 0) {
+        const earlyAvgPace = earlyLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / earlyLaps.length;
+        if (midAvgPace > earlyAvgPace + 0.15) {
+          midPara += `This represents significant slowing from the early pace, indicating fatigue began setting in. Building aerobic capacity through base training would help maintain pace longer. `;
+        } else if (midAvgPace < earlyAvgPace) {
+          midPara += `Remarkably, you actually maintained or improved your pace, demonstrating excellent endurance and race execution. `;
+        } else {
+          midPara += `The pace remained relatively consistent with the early kilometers, showing solid conditioning. `;
+        }
+      }
+
+      commentary.push(midPara);
+    }
+
+    // Analyze finish (last third)
+    const finishLaps = laps.slice(midEnd);
+    if (finishLaps.length > 0) {
+      const finishAvgPace = finishLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / finishLaps.length;
+      const finishAvgHR = finishLaps.reduce((sum, lap) => sum + (lap.avgHeartRate || lap.heartRate || 0), 0) / finishLaps.length;
+      const finishPaceMin = Math.floor(finishAvgPace);
+      const finishPaceSec = Math.round((finishAvgPace % 1) * 60);
+
+      let finishPara = `In the closing kilometers, you`;
+
+      if (midLaps.length > 0) {
+        const midAvgPace = midLaps.reduce((sum, lap) => sum + (lap.pace || 0), 0) / midLaps.length;
+        if (finishAvgPace < midAvgPace - 0.1) {
+          finishPara += ` found another gear, accelerating to ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/km. This strong finish demonstrates both physical capability and mental toughness. `;
+        } else if (finishAvgPace > midAvgPace + 0.2) {
+          finishPara += ` slowed to ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/km, likely due to accumulated fatigue. Incorporating tempo runs and lactate threshold work would help maintain pace when tired. `;
+        } else {
+          finishPara += ` maintained ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/km to the finish. `;
+        }
+      } else {
+        finishPara += ` finished at ${finishPaceMin}:${String(finishPaceSec).padStart(2, '0')}/km pace. `;
+      }
+
+      // Add final heart rate observation
+      if (finishAvgHR > 0 && metrics.maxHeartRate > 0) {
+        const hrPercentOfMax = (finishAvgHR / metrics.maxHeartRate) * 100;
+        if (hrPercentOfMax >= 95) {
+          finishPara += `Your heart rate averaged ${Math.round(finishAvgHR)} bpm in this section (${hrPercentOfMax.toFixed(0)}% of max), showing maximum effort was given. `;
+        } else if (hrPercentOfMax < 85) {
+          finishPara += `With heart rate at ${Math.round(finishAvgHR)} bpm (${hrPercentOfMax.toFixed(0)}% of max), there may have been room to push harder in future races. `;
+        }
+      }
+
+      // Add forward-looking statement
+      if (analysis.overallScore >= 80) {
+        finishPara += `Your consistent execution suggests focusing on speedwork and VO2 max intervals could unlock faster times.`;
+      } else if (analysis.overallScore >= 65) {
+        finishPara += `Building your aerobic base with more easy-paced runs would provide a foundation for more aggressive racing.`;
+      } else {
+        finishPara += `Focus on establishing consistent training volume and proper pacing in workouts before adding intensity.`;
+      }
+
+      commentary.push(finishPara);
+    }
+
+    return commentary;
   }
 
   /**
